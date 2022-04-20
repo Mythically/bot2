@@ -4,7 +4,7 @@ from pprint import pprint
 
 import requests
 
-SPOTIFY_ACCESS_TOKEN = "BQBOYKS-4kyYYf6Yw2aMPLhE08cOAgpmmczYmo8gUp45Mp6roea_Gr-Gi541fCyiepIj4C682rzAJze-QrNAxYq55Iwn3fgqRs0tmVTbV_mxFMx9LC0boGGbOileaM1_Yf5jHAissALla6dwEaHu_TrAloMvk6tkiI85"
+SPOTIFY_ACCESS_TOKEN = os.environ['SPOTIFY_ACCESS_TOKEN']
 SPOTIFY_GET_CURRENT_TRACK_URL = 'https://api.spotify.com/v1/me/player/currently-playing'
 
 
@@ -19,7 +19,6 @@ def get_current_track():
     print(json_resp)
     track_name = json_resp['item']['name']
     artists = [artist for artist in json_resp['item']['artists']]
-
     link = json_resp['item']['external_urls']['spotify']
 
     artist_names = ', '.join([artist['name'] for artist in artists])

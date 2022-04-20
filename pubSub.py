@@ -4,8 +4,8 @@ import os
 from twitchio.ext import pubsub
 
 my_token = os.environ["TMI_TOKEN"]
-users_oauth_token = "se4xwnmyhahz1us708e7z3zasp8j9y"
-users_channel_id = 50458406
+users_oauth_token = os.environ['PUB_SUB_TOKEN']
+users_channel_id = os.environ['PUB_SUB_ID']
 client = twitchio.Client(token=my_token)
 client.pubsub = pubsub.PubSubPool(client)
 
