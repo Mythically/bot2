@@ -9,7 +9,6 @@ users_channel_id = os.environ['PUB_SUB_ID']
 client = twitchio.Client(token=my_token)
 client.pubsub = pubsub.PubSubPool(client)
 
-
 @client.event()
 async def event_pubsub_bits(event: pubsub.PubSubBitsMessage):
     print("bits redemption" + str(event))

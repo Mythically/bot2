@@ -14,7 +14,7 @@ import requests
 from spellchecker import SpellChecker
 from twitchio import Channel, User, Client
 from twitchio.ext import eventsub, commands, pubsub
-
+import spotify_playing
 import botDB
 
 # from pprint import pprint
@@ -709,7 +709,10 @@ async def ffzemotes(ctx, *, msg=None):
         for emoticon in id['emoticons']:
             emoteString += str(emoticon['name'] + " ")
     await ctx.channel.send(emoteString)
-
+@bot.command(name="song")
+async def  spotify_current_song(ctx):
+    current_song = spotify_playing.get_song()
+    await ctx.channel.send(current_song)
 
 def spell_check(word):
     global spell, words

@@ -1,22 +1,26 @@
 import os
 from datetime import time
 from pprint import pprint
-
+from spotify_playing_token_refresh import get_new_token
 import requests
 
-SPOTIFY_ACCESS_TOKEN = os.environ['SPOTIFY_ACCESS_TOKEN']
+# SPOTIFY_ACCESS_TOKEN = os.environ['SPOTIFY_ACCESS_TOKEN']
 SPOTIFY_GET_CURRENT_TRACK_URL = 'https://api.spotify.com/v1/me/player/currently-playing'
 
 
-def get_current_track():
+
+def get_current_track(access_token):
     response = requests.get(
         SPOTIFY_GET_CURRENT_TRACK_URL,
         headers={
-            "Authorization": f"Bearer {os.environ['FLOW_CODE']}"
+            "Authorization": f"Bearer {access_token}"
         }
     )
+    # print(access_token)
+    # print(response)
     json_resp = response.json()
-    print(json_resp)
+    # print(json_resp)
+
     track_name = json_resp['item']['name']
     artists = [artist for artist in json_resp['item']['artists']]
     link = json_resp['item']['external_urls']['spotify']
@@ -28,24 +32,12 @@ def get_current_track():
         "artists": artist_names,
         "link": link
     }
-
-    return current_track_info
-
-
-def main():
-    current_track_id = None
-    while True:
-        current_track_info = get_current_track()
-
-        if current_track_info['id'] != current_track_id:
-            pprint(
-                current_track_info,
-                indent=4,
-            )
-            current_track_id = current_track_info['id']
-
-        time.sleep(1)
+    return track_name + " by " + artist_names + ", link: " + link
 
 
-if __name__ == '__main__':
-    main()
+
+def get_song():
+    access_token = get_new_token()
+    os.environ['SPOTIFY_ACCESS_TOKEN'] = access_token
+    return get_current_track(access_token)
+
