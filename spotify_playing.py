@@ -17,7 +17,7 @@ def get_current_track(access_token):
         }
     )
     # print(access_token)
-    # print(response)
+    print(response)
     json_resp = response.json()
     # print(json_resp)
 
