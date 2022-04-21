@@ -154,11 +154,11 @@ async def event_raw_usernotice(channel: Channel, tags: dict):
         await channel.send("First message")
 
 
-@client.event()
-async def event_pubsub_bits(event):
-    print("bits redemption" + str(event))
-    chan = client.get_channel(current_channel)
-    await chan.send("Cheer!")
+# @client.event()
+# async def event_pubsub_bits(event):
+#     print("bits redemption" + str(event))
+#     chan = client.get_channel(current_channel)
+#     await chan.send("Cheer!")
 
 
 # @bot.command(name="reason")
