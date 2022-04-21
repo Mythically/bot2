@@ -2,7 +2,7 @@ import os
 
 import requests
 
-refresh_token = os.environ['SPOTIFY_REFRESH_TOKEN6']
+refresh_token = os.environ['SPOTIFY_REFRESH_TOKEN']
 refresh_token_link = "https://accounts.spotify.com/api/token"
 client_base64 = os.environ['SPOTIFY_CLIENT_DETAILS_BASE64']
 

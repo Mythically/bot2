@@ -1,6 +1,4 @@
 import os
-from datetime import time
-from pprint import pprint
 from spotify_playing_token_refresh import get_new_token
 import requests
 
