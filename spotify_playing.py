@@ -30,7 +30,7 @@ def get_current_track(access_token):
         "artists": artist_names,
         "link": link
     }
-    return track_name + " by " + artist_names + ", link: " + link
+    return track_name + " by " + artist_names + " " + link
 
 
 

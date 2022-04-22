@@ -53,6 +53,7 @@ bot = commands.Bot(
     initial_channels=[os.environ['CHANNEL']]
 )
 
+
 # bot.py, below bot object
 @bot.event()
 async def event_ready():
@@ -468,12 +469,12 @@ async def trigger(ctx, *, msg):
     await ctx.channel.send(pokemon_message)
 
 
-@bot.command(name="add", aliases=['t'])
-async def add(ctx, *, msg):
-    message = msg.split()
-    user = ctx.author.name
-    query = {'_id': message[0], 'pokemon': {message[1]: True}}
-    botDB.insert(query)
+# @bot.command(name="add", aliases=['t'])
+# async def add(ctx, *, msg):
+#     message = msg.split()
+#     user = ctx.author.name
+#     query = {'_id': message[0], 'pokemon': {message[1]: True}}
+#     botDB.insert(query)
 
 
 @bot.command(name="adddeath", aliases=['t'])
@@ -709,10 +710,13 @@ async def ffzemotes(ctx, *, msg=None):
         for emoticon in id['emoticons']:
             emoteString += str(emoticon['name'] + " ")
     await ctx.channel.send(emoteString)
+
+
 @bot.command(name="song")
-async def  spotify_current_song(ctx):
+async def spotify_current_song(ctx):
     current_song = spotify_playing.get_song()
     await ctx.channel.send(current_song)
+
 
 def spell_check(word):
     global spell, words
@@ -721,6 +725,16 @@ def spell_check(word):
     for word in misspelled:
         words += word + ' '
     return words
+
+
+@bot.command(name="spotify")
+async def spotifyToken(ctx, *, msg):
+    await ctx.channel.send(botDB.insetSpotifyRefreshToken(ctx.author.name, msg))
+
+
+@bot.command(name="checkKey")
+async def checkSpotifyToken(ctx):
+    await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
 
 
 def spell_correction(word):

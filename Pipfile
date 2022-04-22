@@ -7,7 +7,7 @@ name = "pypi"
 twitchio = "*"
 pokepy = "*"
 pymongo = "*"
-requests = "*"
+requests = "==2.21.*"
 pyvjoy = "*"
 
 [dev-packages]
