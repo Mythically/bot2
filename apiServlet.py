@@ -1,14 +1,6 @@
-from flask import Flask
-from flask import jsonify
-from flask import request
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
-
-
-@app.route('/', methods=['GET'])
-def hello_world():
-    print("GET")
-    return jsonify({'message': 'Hello, World!'})
 
 
 @app.route('/', methods=['POST'])
@@ -16,6 +8,11 @@ def getData():
     # type = request.args.get('data')
     value = request.view_args
     print(value)
+
+
+@app.route('/')
+def index():
+    return render_template('front/index.html')
 
 
 if __name__ == "__main__":
