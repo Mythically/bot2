@@ -1,10 +1,9 @@
 import os
-from spotify_playing_token_refresh import get_new_token
+from spotify_playing_token_refresh import tokenManager
 import requests
 
 # SPOTIFY_ACCESS_TOKEN = os.environ['SPOTIFY_ACCESS_TOKEN']
 SPOTIFY_GET_CURRENT_TRACK_URL = 'https://api.spotify.com/v1/me/player/currently-playing'
-
 
 
 def get_current_track(access_token):
@@ -33,9 +32,7 @@ def get_current_track(access_token):
     return track_name + " by " + artist_names + " " + link
 
 
-
-def get_song():
-    access_token = get_new_token()
+def get_song(channel_name, ctx_channel):
+    access_token = tokenManager(channel_name, ctx_channel)
     os.environ['SPOTIFY_ACCESS_TOKEN'] = access_token
     return get_current_track(access_token)
-

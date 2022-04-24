@@ -14,7 +14,6 @@ import requests
 from spellchecker import SpellChecker
 from twitchio import Channel, User, Client
 from twitchio.ext import eventsub, commands, pubsub
-import spotify_playing
 import botDB
 
 # from pprint import pprint
@@ -79,6 +78,7 @@ async def event_message(a):
     #     if "nutz" in a.content.lower():
     #         return
     #     await a.channel.send("nutz")
+
     if "gift me" in a.content.lower():
         await a.channel.send(f"/timeout {a.author.name} 1m ")
     if 'hello' in a.content.lower():
@@ -90,8 +90,8 @@ async def event_message(a):
         if "messages" in a.content.lower():
             if a.author.name == "themythh":
                 await a.channel.send(str(i))
-    if " what " and " song " in a.content.lower():
-        spotify_playing.get_current_track()
+    # if " what " and " song " in a.content.lower():
+    #     spotify_playing.get_current_track()
 
     # print(get_user(a.author.name))
 
@@ -135,11 +135,11 @@ async def event_message(msg):
         await msg.channel.send("banned")
 
 
-@bot.command(name="user")
-async def users(msg):
-    response = requests.get("https://api.twitch.tv/helix/users?login=zack_ko")
-    fetch = response.json()
-    print(fetch)
+# @bot.command(name="user")
+# async def users(msg):
+#     response = requests.get("https://api.twitch.tv/helix/users?login=zack_ko")
+#     fetch = response.json()
+#     print(fetch)
 
 
 @client.event()
@@ -714,7 +714,7 @@ async def ffzemotes(ctx, *, msg=None):
 
 @bot.command(name="song")
 async def spotify_current_song(ctx):
-    current_song = spotify_playing.get_song()
+    current_song = spotify_playing.get_song(ctx.channel.name, ctx.channel)
     await ctx.channel.send(current_song)
 
 
@@ -729,12 +729,16 @@ def spell_check(word):
 
 @bot.command(name="spotify")
 async def spotifyToken(ctx, *, msg):
-    await ctx.channel.send(botDB.insetSpotifyRefreshToken(ctx.author.name, msg))
+    await ctx.channel.send(botDB.insetSpotifyRefreshToken(ctx.author.channel.name, msg))
 
 
 @bot.command(name="checkKey")
 async def checkSpotifyToken(ctx):
     await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
+
+
+async def send_message(msg, channel):
+    await channel.send(msg)
 
 
 def spell_correction(word):

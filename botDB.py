@@ -1,5 +1,8 @@
 from pymongo import MongoClient
 from typing import TypedDict
+import time as t
+
+import bot
 
 
 class UserKey(TypedDict):
@@ -65,9 +68,41 @@ def insertEmote(dict_arg):
 #         else:
 #             spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}'})
 #             return "Token inserted"
+
+#########################################################
+################### TOKEN MANAGMENT #####################
+#########################################################
+
+def checkTokenAge(token_time):
+    print(abs(token_time - t.time()))
+    if abs(token_time - t.time()) < 3540:
+        return True
+    else:
+        return False
+
+
+def fetchToken(channel_name, ctx_channel):
+    try:
+        return spotifyTokens.find({'name': f'{channel_name}'})
+    except Exception as e:
+        print(e)
+        return bot.send_message("Error has occurred", ctx_channel)
+
+
+def updateToken(channel_name, refresh_token, time, ctx_channel):
+    try:
+        # spotifyTokens.find_one_and_update()
+        print(channel_name, refresh_token)
+        spotifyTokens.update_one({'name': f'{channel_name}'},
+                                 {'$set': {'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'}}, upsert=True)
+    except Exception as e:
+        print(e)
+        return bot.send_message("An error has occurred, please try again!", ctx_channel)
+
+
 def insetSpotifyRefreshToken(channel_name, refresh_token):
     try:
-        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}'})
+        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'})
     except Exception as e:
         print(e)
         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
@@ -77,6 +112,7 @@ def checkSpotifyRefreshToken(channel_name):
     try:
         x = spotifyTokens.find({'name': f'{channel_name}'})
         if x[0]['name'] is not None:
+            print(x[0]['refreshToken'])
             return f"@{channel_name}" + " You have a key in the database."
     except Exception as e:
         print(e)
