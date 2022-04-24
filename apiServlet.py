@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
-
+app.config["EXPLAIN_TEMPLATE_LOADING"] = True
 
 @app.route('/', methods=['POST'])
 def getData():
@@ -12,7 +12,7 @@ def getData():
 
 @app.route('/')
 def index():
-    return render_template('front/index.html')
+    return render_template('index.html')
 
 
 if __name__ == "__main__":
