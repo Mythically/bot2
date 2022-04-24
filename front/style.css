@@ -7,19 +7,43 @@ footer {
     color: gainsboro;
 }
 
+body {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-content: center;
+    min-height: 100vh;
+}
+
 footer p {
     padding-top: 15px;
     font-size: smaller;
 }
 
+.form {
+    width: 100%;
+    display: inline-block;
+    height: 98px
+
+
+}
+
+button {
+    color: beige;
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 15%;
+}
+
 #username {
+    float: left;
     color: beige;
     font-size: xxx-large;
     text-align: center;
-    width: 100%;
+    width: 85%;
     border: none;
     background: transparent;
-    margin-top: 50%;
 }
 
 #username :focus, #username:hover {

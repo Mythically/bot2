@@ -1,5 +1,6 @@
-$(body).on("ready", function () {
+$('body').on("ready", function () {
     alert("hi")
+
 })
 
 function focus() {
