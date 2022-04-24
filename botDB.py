@@ -9,10 +9,8 @@ class UserKey(TypedDict):
     name: str
     refreshToken: str
 
-
 myclient = MongoClient("mongodb://localhost:27017/")
 admin = myclient.admin
-
 botDB = myclient["botDatabase"]
 chatUsers = botDB["users"]
 serverStatusResult = admin.command("serverStatus")
@@ -73,7 +71,7 @@ def insertEmote(dict_arg):
 ################### TOKEN MANAGMENT #####################
 #########################################################
 
-def checkTokenAge(token_time):
+def checkTokenAge(token_time: float):
     print(abs(token_time - t.time()))
     if abs(token_time - t.time()) < 3540:
         return True
@@ -81,7 +79,7 @@ def checkTokenAge(token_time):
         return False
 
 
-def fetchToken(channel_name, ctx_channel):
+def fetchToken(channel_name: str, ctx_channel):
     try:
         return spotifyTokens.find({'name': f'{channel_name}'})
     except Exception as e:
@@ -89,7 +87,7 @@ def fetchToken(channel_name, ctx_channel):
         return bot.send_message("Error has occurred", ctx_channel)
 
 
-def updateToken(channel_name, refresh_token, time, ctx_channel):
+def updateToken(channel_name, refresh_token, ctx_channel):
     try:
         # spotifyTokens.find_one_and_update()
         print(channel_name, refresh_token)

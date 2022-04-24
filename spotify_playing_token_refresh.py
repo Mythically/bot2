@@ -31,6 +31,6 @@ def tokenManager(channel_name, ctx_channel):
                                  headers={"Authorization": f"Basic {client_base64}"})
         resp_json = response.json()
         new_token = resp_json['access_token']
-        botDB.updateToken(channel_name, new_token, token_time, ctx_channel)
+        botDB.updateToken(channel_name, new_token, ctx_channel)
         print(resp_json)
         return new_token
