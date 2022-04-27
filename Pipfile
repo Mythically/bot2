@@ -9,6 +9,8 @@ pokepy = "*"
 pymongo = "*"
 pyvjoy = "*"
 flask = "*"
+tqdm = "*"
+gunicorn = "*"
 
 [dev-packages]
 
