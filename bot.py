@@ -15,7 +15,7 @@ from spellchecker import SpellChecker
 from twitchio import Channel, User, Client
 from twitchio.ext import eventsub, commands, pubsub
 import botDB
-
+from tqdm import tqdm
 # from pprint import pprint
 
 # setting up database connection
@@ -697,6 +697,27 @@ async def bttvemotes(ctx, *, msg=None):
             await sleep(2)
 
 
+@bot.command(name="7tvemotes")
+async def seventvemotes(ctx, *, msg=None):
+    if msg is None:
+        print(msg, ctx.channel.name)
+        msg = ctx.channel.name
+    emotesString = ""
+    counter = 0
+    response = requests.get(f"https://api.7tv.app/v2/users/{msg}/emotes")
+    fetch = response.json()
+    for numbers, word in enumerate(fetch):
+        # print(word['name'])
+        if len(emotesString + word['name']) < 500:
+            emotesString += word['name'] + " "
+            counter += 1
+        if (len(emotesString + word['name']) > 500) or (numbers == len(fetch) - 1):
+            await ctx.channel.send(emotesString)
+            emotesString = ""
+            counter = 0
+            await sleep(2)
+
+
 @bot.command()
 async def ffzemotes(ctx, *, msg=None):
     emoteString = ""
@@ -714,7 +735,7 @@ async def ffzemotes(ctx, *, msg=None):
 
 @bot.command(name="song")
 async def spotify_current_song(ctx):
-    current_song = spotify_playing.get_song(ctx.channel.name, ctx.channel)
+    current_song = spotify_playing.get_song("themythh", ctx.channel)
     await ctx.channel.send(current_song)
 
 

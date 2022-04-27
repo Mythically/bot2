@@ -98,9 +98,9 @@ def updateToken(channel_name, refresh_token, ctx_channel):
         return bot.send_message("An error has occurred, please try again!", ctx_channel)
 
 
-def insetSpotifyRefreshToken(channel_name, refresh_token):
+def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
     try:
-        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'})
+        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}','getToken': f'{get_token}', 'time': f'{t.time()}'})
     except Exception as e:
         print(e)
         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
