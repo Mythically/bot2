@@ -766,6 +766,32 @@ def spell_correction(word):
     return spell.correction(word)
 
 
+@bot.command()
+async def pyramid(ctx, *, msg):
+    new = msg.split(" ")
+
+    if not str(new[1]).isnumeric():
+        await ctx.channel.send(f"Does \"{new[1]}\" look like a number to you!? Madge ")
+        return
+
+    x = int(new[1])
+
+    if x > 5 and ctx.channel.name == "ws_zoomers":
+        await ctx.channel.send("I know it's fun, but chill out")
+        return
+    column = ""
+
+    for rows in range(x):
+        column += new[0] + " "
+        await ctx.channel.send(column)
+
+    column = column.rsplit(' ', 1)[0]
+
+    for row in range(x - 1, 0, -1):
+        column = column.rsplit(' ', 1)[0]
+        await ctx.channel.send(column)
+
+
 # bot.py
 if __name__ == "__main__":
     bot.run()
