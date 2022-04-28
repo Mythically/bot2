@@ -769,22 +769,28 @@ def spell_correction(word):
 @bot.command()
 async def pyramid(ctx, *, msg):
     new = msg.split(" ")
-
+    limit = 5
+    if ctx.author.is_broadcaster:
+        limit = 48
+        await ctx.channel.send("You are strimermans Pog")
     if not str(new[1]).isnumeric():
         await ctx.channel.send(f"Does \"{new[1]}\" look like a number to you!? Madge ")
         return
 
     x = int(new[1])
 
-    if x > 5 and ctx.channel.name == "ws_zoomers":
+    if x > limit and ctx.author.name == "ws_zoomers":
+        await ctx.channel.send(f"{limit} is the limit, you are asking for {x}")
         await ctx.channel.send("I know it's fun, but chill out")
         return
     column = ""
 
     for rows in range(x):
         column += new[0] + " "
+        if len(column) > 500:
+            await ctx.channel.send("Message is longer than 500 characters")
+            return
         await ctx.channel.send(column)
-
     column = column.rsplit(' ', 1)[0]
 
     for row in range(x - 1, 0, -1):
