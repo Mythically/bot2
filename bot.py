@@ -193,10 +193,11 @@ async def minigames(ctx, *, msg):
 async def ww(ctx, *, msg):
     typings = ''
     damage = {'4x': [], '2x': [], '1x': [], '0.5x': [], '0.25x': [], '0x': []}
-    pokemon = pokemonClient.get_pokemon(msg.lower())
+    pokemon = [pokemonClient.get_pokemon(msg.lower())]
     # print(pokemon)
     if pokemon:
         pokemon_type = []
+        print(pokemon, isinstance(pokemon, (float, str, set, dict)))
         for x in range(len(pokemon[0].types)):
             pokemon_type.append(pokemon[0].types[x].type.name)
         for j in range(len(pokemon_type)):
@@ -300,9 +301,9 @@ async def ww(ctx, *, msg):
     if damage['2x']:
         message2 = ', '.join(damage['2x'])
 
-    # if message1:
-    #     await ctx.channel.send(pokemon[0].name + ' is: ' + typings + ' takes 4x: ' + message1 + '; 2x: ' + message2)
-    #     return
+    if message1:
+        await ctx.channel.send(pokemon[0].name + ' is: ' + typings + ' takes 4x: ' + message1 + '; 2x: ' + message2)
+        return
     await ctx.channel.send(pokemon[0].name + ' is: ' + typings + ' takes 2x: ' + message2)
 
 

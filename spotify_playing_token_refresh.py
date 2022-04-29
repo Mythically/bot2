@@ -22,12 +22,13 @@ def getFinalTokenPair(channel_name):
                                   'code': 'auth_code',
                                   'redirect_uri': 'http://localhost'}
                             )
-    botDB.insetSpotifyRefreshToken()
+    # botDB.insetSpotifyRefreshToken()
 
 
 def tokenManager(channel_name, ctx_channel):
     token: str = botDB.fetchToken(channel_name, ctx_channel)[0]['refreshToken']
     token_time: float = float(botDB.fetchToken(channel_name, ctx_channel)[0]['time'])
+
     print(token, token_time)
     print("Checking token age....")
     if botDB.checkTokenAge(token_time):

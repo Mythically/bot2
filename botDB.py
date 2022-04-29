@@ -9,6 +9,7 @@ class UserKey(TypedDict):
     name: str
     refreshToken: str
 
+
 myclient = MongoClient("mongodb://localhost:27017/")
 admin = myclient.admin
 botDB = myclient["botDatabase"]
@@ -100,10 +101,23 @@ def updateToken(channel_name, refresh_token, ctx_channel):
 
 def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
     try:
-        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}','getToken': f'{get_token}', 'time': f'{t.time()}'})
+        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'getToken': f'{get_token}',
+                              'time': f'{t.time()}'})
     except Exception as e:
         print(e)
         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
+
+
+def checkIfAlreadyInserted(chnnel_name):
+    try:
+        x = spotifyTokens.find({'name': f'{chnnel_name}'})
+        if x[0]['name'] == chnnel_name:
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(e)
+        return
 
 
 def checkSpotifyRefreshToken(channel_name):
