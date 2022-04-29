@@ -175,7 +175,7 @@ async def test(msg):
 
 @bot.command(name="type", aliases=['t'])
 async def types2(ctx, *, msg):
-    pokemon = pokepy.V2Client().get_pokemon(msg.lower())
+    pokemon = [pokepy.V2Client().get_pokemon(msg.lower())]
     pokemon_type = ""
     for x in range(len(pokemon[0].types)):
         pokemon_type += pokemon[0].types[x].type.name
@@ -408,14 +408,15 @@ async def trigger(ctx, *, msg):
     if msg.isnumeric() is True:
         pokemon_id = msg
     elif msg.isnumeric() is False:
-        pokemon = pokemonClient.get_pokemon(msg.lower())
+        pokemon = [pokemonClient.get_pokemon(msg.lower())]
         pokemon_id = pokemon[0].id
 
     # print(pokemon_id)
     # await ctx.channel.send(chain[0].chain.evolves_to.species.name)
-    pokemon_species_id = pokemonClient.get_pokemon_species(pokemon_id)[0].evolution_chain.url
+    id = [pokemonClient.get_pokemon_species(pokemon_id)]
+    pokemon_species_id = id[0].evolution_chain.url
     pokemon_evolution_id = pokemon_species_id.split("/")[-2]
-    pokemon_evolution = pokemonClient.get_evolution_chain(pokemon_evolution_id)
+    pokemon_evolution = [pokemonClient.get_evolution_chain(pokemon_evolution_id)]
     # print(str(pokemon_species_id) + " chain")
     # print(pokemon_evolution_id)
     # pokemon_trigger = pokemon_evolution[0].chain.evolves_to[0].evolution_details[0].trigger.name
@@ -495,7 +496,7 @@ async def move(ctx, *, msg):
     if " " in msg:
         msg = msg.replace(" ", "-")
     # print(msg)
-    move = pokemonClient.get_move(msg)
+    move = [pokemonClient.get_move(msg)]
     type = str(move[0].type.name)
     damage_class = str(move[0].damage_class.name)
     power = str(move[0].power)

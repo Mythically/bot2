@@ -1,5 +1,13 @@
 from flask import Flask, render_template, request
-from .. import botDB
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+
+import botDB
 
 app = Flask(__name__, static_folder='static', template_folder="templates")
 code = ""
