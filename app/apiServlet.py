@@ -1,5 +1,4 @@
 from flask import Flask, request, render_template
-import requests
 # link = os.environ['home_link']
 
 app = Flask(__name__)

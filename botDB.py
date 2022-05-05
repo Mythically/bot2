@@ -69,6 +69,33 @@ def insertEmote(dict_arg):
 #             return "Token inserted"
 
 #########################################################
+################### USERS MANAGMENT #####################
+#########################################################
+
+def newUser(username):
+    print("checking")
+    if chatUsers.find_one({"username": username}) is None:
+        print("none")
+        try:
+            chatUsers.insert_one({"username": username, "lastSeen": t.time(), "messages": 1})
+            return True
+        except Exception as e:
+            print(e)
+            return False
+    return False
+
+
+def incMessages(username):
+    print(newUser(username))
+    if not newUser(username):
+        print(username)
+        chatUsers.update_one({"username": username},
+                             {"$set": {"lastSeen": t.time()}})
+        chatUsers.update_one({"username": username},
+                             {"$inc": {"messages": 1}})
+
+
+#########################################################
 ################### TOKEN MANAGMENT #####################
 #########################################################
 
@@ -129,3 +156,7 @@ def checkSpotifyRefreshToken(channel_name):
     except Exception as e:
         print(e)
         return f"@{channel_name}" + " You do not have a key in the database."
+
+#####################################################################
+################### POKEMON & BATTLES MANAGMENT #####################
+#####################################################################

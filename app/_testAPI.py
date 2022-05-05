@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request
+from getCurrentPublicUrlNgrok import getUrl
 import os
 import sys
 import inspect
@@ -7,6 +8,8 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 import botDB
+
+url = getUrl()
 
 app = Flask(__name__, static_folder='static', template_folder="templates")
 code = ""
@@ -35,4 +38,4 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=80, debug=False)
+    app.run(host=f"{url}]", port=80, debug=False)

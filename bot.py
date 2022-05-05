@@ -118,19 +118,20 @@ async def event_message(a):
 @bot.event()
 async def event_message(msg):
     author = str(msg.author).split()
-    # print(str(msg.author).split())
+    words2 = msg.content.split()
+    botDB.incMessages(msg.author.name.lower())
+    # if "nightbot" in word:
+    if "caught" in words2:
+        pokemon_name = words2[4].strip("!")
+        pokemon = [pokemonClient.get_pokemon(pokemon_name.lower())]
+        pokemon_id = pokemon[0].id
+        await msg.channel.send(f"Detected pokemon: {pokemon_name}, #{pokemon_id}")
     for word in author:
         if "stream" in word:
-            words = msg.content.split()
             for word in words:
                 if "hoss" in word and word != "frathoss":
                     await msg.channel.send(f"/ban {word}")
                     await msg.channel.send("Another hoss bites the dust PogChamp")
-        if "themythh" in word:
-            if "start RareChar" in msg.content:
-                for x in range(1000):
-                    await sleep(20)
-                    await msg.channel.send("RareChar")
     if "buy" and "followers" and "viewers" and "primes" in msg.content:
         await msg.channel.send("banned")
 
@@ -183,12 +184,6 @@ async def types2(ctx, *, msg):
     await ctx.channel.send(str(pokemon_type))
     # return list(pokemon_type)
 
-
-@bot.command(name="minigames", aliases=['mg'])
-async def minigames(ctx, *, msg):
-    gamers = []
-
-
 @bot.command(name='weak', aliases=['t'])
 async def ww(ctx, *, msg):
     typings = ''
@@ -197,21 +192,20 @@ async def ww(ctx, *, msg):
     # print(pokemon)
     if pokemon:
         pokemon_type = []
-        print(pokemon, isinstance(pokemon, (float, str, set, dict)))
         for x in range(len(pokemon[0].types)):
             pokemon_type.append(pokemon[0].types[x].type.name)
         for j in range(len(pokemon_type)):
-            print(pokemon_type[j])
+            # print(pokemon_type[j])
             typings += pokemon_type[j]
             typings += ' '
-            print(typings)
+            # print(typings)
 
         if len(pokemon_type) != 0:
             pass
             # await ctx.channel.send(pokemon[0].name + ' is: ' + str(pokemon_type) + ' and is weak to: ')
         else:
             pokemon_type = msg.split()
-            print(str(pokemon_type))
+            # print(str(pokemon_type))
     x = 1
     loop = 0
     if pokemon_type:
@@ -410,7 +404,8 @@ async def trigger(ctx, *, msg):
     elif msg.isnumeric() is False:
         pokemon = [pokemonClient.get_pokemon(msg.lower())]
         pokemon_id = pokemon[0].id
-
+        print(pokemon, pokemon_id)
+    pokemon = [pokemonClient.get_pokemon(msg.lower())]
     # print(pokemon_id)
     # await ctx.channel.send(chain[0].chain.evolves_to.species.name)
     id = [pokemonClient.get_pokemon_species(pokemon_id)]
