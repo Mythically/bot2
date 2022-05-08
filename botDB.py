@@ -137,8 +137,7 @@ def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
 
 def checkIfAlreadyInserted(chnnel_name):
     try:
-        x = spotifyTokens.find({'name': f'{chnnel_name}'})
-        if x[0]['name'] == chnnel_name:
+        if chatUsers.find_one({"username": chnnel_name}) is not None:
             return True
         else:
             return False

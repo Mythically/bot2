@@ -732,8 +732,12 @@ async def ffzemotes(ctx, *, msg=None):
 
 @bot.command(name="song")
 async def spotify_current_song(ctx):
-    current_song = spotify_playing.get_song("themythh", ctx.channel)
-    await ctx.channel.send(current_song)
+    if botDB.checkIfAlreadyInserted(ctx.channel.name):
+        current_song = spotify_playing.get_song(ctx.channel.name, ctx.channel)
+        await ctx.channel.send(current_song)
+    else:
+        await ctx.channel.send("It seems that this channel has not yet linked their spotify, please check with the "
+                               "broadcaster.")
 
 
 def spell_check(word):
@@ -747,7 +751,9 @@ def spell_check(word):
 
 @bot.command(name="spotify")
 async def spotifyToken(ctx, *, msg):
-    await ctx.channel.send(botDB.insetSpotifyRefreshToken(ctx.author.channel.name, msg))
+    await ctx.channel.send("You can sign up here :) -> https://accounts.spotify.com/authorize?client_id"
+                           "=90082084b6b6423f8f08dd85e74f42b4&response_type=code&redirect_uri=https://b816-103-219-21"
+                           "-123.eu.ngrok.io/&scope=user-read-currently-playing")
 
 
 @bot.command(name="checkKey")
