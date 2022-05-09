@@ -78,7 +78,6 @@ async def event_message(a):
     #     if "nutz" in a.content.lower():
     #         return
     #     await a.channel.send("nutz")
-
     if "gift me" in a.content.lower():
         await a.channel.send(f"/timeout {a.author.name} 1m ")
     if 'hello' in a.content.lower():
@@ -517,10 +516,10 @@ async def time_outed(msg):
 
 @bot.command(name="kill")
 async def kill(msg):
-    await msg.channel.send("Bye! :)")
     print(msg.channel.name)
 
-    if msg.author.name == msg.channel.name or msg.author.name == "themythh":
+    if msg.author.name == msg.channel.name or msg.author.name == "themythh" or msg.author.is_mod:
+        await msg.channel.send("Bye! :)")
         await bot.close()
 
 
