@@ -156,6 +156,31 @@ def checkSpotifyRefreshToken(channel_name):
         print(e)
         return f"@{channel_name}" + " You do not have a key in the database."
 
+
 #####################################################################
 ################### POKEMON & BATTLES MANAGMENT #####################
 #####################################################################
+
+def insertCaughtPokemon(pokemon_name, username):
+    pokemon_name = pokemon_name.capitalize()
+    try:
+        user = chatUsers.find_one({'username': username})
+        if user is not None:
+            chatUsers.update_one({'username': username},
+                                 {'$addToSet': {'caughtPokemon': {'name': f'{pokemon_name}'}}})
+        return "Caught successfully"
+    except Exception as e:
+        print(e)
+        return "Error occurred"
+
+
+def getPokedex(username):
+    try:
+        if chatUsers.find_one({'username': username}) is not None:
+            caught_pokemon = chatUsers.find_one({'username': username})['caughtPokemon']
+            for pokemon in caught_pokemon:
+                print(pokemon['name'])
+            return caught_pokemon
+    except  Exception as e:
+        print(e)
+        return "An error occurred"

@@ -183,6 +183,7 @@ async def types2(ctx, *, msg):
     await ctx.channel.send(str(pokemon_type))
     # return list(pokemon_type)
 
+
 @bot.command(name='weak', aliases=['t'])
 async def ww(ctx, *, msg):
     typings = ''
@@ -614,26 +615,50 @@ async def join(ctx, *, msg):
     print(channel_name)
 
 
+@bot.command(name="mon")
+async def pokemon(ctx):
+    pokemon_id = randint(0, 1126)
+    pokemon = pokemonClient.get_pokemon(pokemon_id)
+    pokemon_name = pokemon.forms[0].name
+    botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
+
+    await ctx.channel.send(
+        str(ctx.author.name) + ' you\'ve caught a ' + str(pokemon_name.capitalize()) + '! Gotta catch \'em all!')
+
+
+@bot.command(name="pokedex")
+async def pokedex(ctx, *, msg=None):
+    pokemons = ""
+    if msg is None:
+        msg = ctx.author.name
+    mons = botDB.getPokedex(msg)
+
+    for mon in mons:
+        pokemons += mon['name'] + ", "
+
+    await ctx.channel.send("Your pokedex has: " + pokemons)
+
+
 @bot.command(name="ban")
 async def ban(msg):
     for x in range(1, 10000):
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hoss{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hossoo_{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hoss00{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hoss000{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban h0ssoo{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban h0ss__{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hoss__{x}')
-        await sleep(2)
+        await sleep(0.3)
         await msg.channel.send(f'/ban hoss00{x}__')
-        await sleep(2)
+        await sleep(0.3)
 
 
 @bot.command(name='ban2')
@@ -766,6 +791,16 @@ async def send_message(msg, channel):
 
 def spell_correction(word):
     return spell.correction(word)
+
+
+@bot.command(name="sayfile")
+async def sayfile(ctx, *, msg):
+    response = requests.get(f"{msg}")
+    bans = response.text.split("\n")
+    print(bans, type(bans))
+    for line in bans:
+        await ctx.channel.send(str(line))
+        await sleep(0.3)
 
 
 @bot.command()
