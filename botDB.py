@@ -15,9 +15,9 @@ admin = myclient.admin
 botDB = myclient["botDatabase"]
 chatUsers = botDB["users"]
 serverStatusResult = admin.command("serverStatus")
-botQuotes = botDB["quotes"]
+botExampleMons = botDB["exampleMons"]
 spotifyTokens = botDB["spotifyRefreshTokens"]
-
+botGeneric = botDB['bot']
 
 # pprint(serverStatusResult)
 
@@ -36,18 +36,18 @@ def dead(my_string):
 #     messenger = chatUsers.find('_id': user)
 #     messenger.upgade($inc {'messages': +1})
 
-def setDeathMsg(my_string):
-    my_query = my_string
-    botQuotes.insert({'deathMsg': my_query})
-
-
-def getRandDeathMsg():
-    msg = botDB.quotes.aggregate(
-        [{"$sample": {"size": 1}}]
-    )
-    for obj in msg:
-        msg = (obj["deathMsg"])
-    return str(msg)
+# def setDeathMsg(my_string):
+#     my_query = my_string
+#     botQuotes.insert({'deathMsg': my_query})
+#
+#
+# def getRandDeathMsg():
+#     msg = botDB.quotes.aggregate(
+#         [{"$sample": {"size": 1}}]
+#     )
+#     for obj in msg:
+#         msg = (obj["deathMsg"])
+#     return str(msg)
 
 
 def insertEmote(dict_arg):
@@ -160,6 +160,15 @@ def checkSpotifyRefreshToken(channel_name):
 #####################################################################
 ################### POKEMON & BATTLES MANAGMENT #####################
 #####################################################################
+def getEscapePhrase():
+    msg = ""
+    mon = botExampleMons.aggregate(
+        [{"$sample": {"size": 1}}]
+    )
+    for thing in mon:
+        msg = thing['pokemon']
+    phase: str = f'{msg} just: dodged your pokeball, laughed at you and hopped away happily'
+    return phase
 
 def insertCaughtPokemon(pokemon_name, username):
     pokemon_name = pokemon_name.capitalize()
@@ -175,12 +184,21 @@ def insertCaughtPokemon(pokemon_name, username):
 
 
 def getPokedex(username):
+    mons = ""
     try:
         if chatUsers.find_one({'username': username}) is not None:
             caught_pokemon = chatUsers.find_one({'username': username})['caughtPokemon']
-            for pokemon in caught_pokemon:
-                print(pokemon['name'])
+            print(len(caught_pokemon))
+            print("lenght ^^^")
+            # if len(caught_pokemon) == 0:
+            #     return "You have not yet caught a mon, use !mon to catch one!"
+            # for pokemon in caught_pokemon:
+            #     mons += pokemon
             return caught_pokemon
-    except  Exception as e:
+    except TypeError as e:
+        print("ERROR")
         print(e)
-        return "An error occurred"
+        return "Are you sure you have caught any mons? Try to catch one with !mon and look at your pokedex again."
+    except KeyError as e:
+        print(e)
+        return "It seems that you have not caught any pokemon! Try to catch one with !mons"

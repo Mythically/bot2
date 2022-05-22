@@ -6,6 +6,7 @@ from asyncio import sleep
 from random import randint
 # from pprint import pprint
 # import pubSub
+import beckett.exceptions
 import twitchio
 import pokepy
 # import json
@@ -617,26 +618,29 @@ async def join(ctx, *, msg):
 
 @bot.command(name="mon")
 async def pokemon(ctx):
-    pokemon_id = randint(0, 1126)
-    pokemon = pokemonClient.get_pokemon(pokemon_id)
-    pokemon_name = pokemon.forms[0].name
-    botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
-
-    await ctx.channel.send(
-        str(ctx.author.name) + ' you\'ve caught a ' + str(pokemon_name.capitalize()) + '! Gotta catch \'em all!')
+    try:
+        pokemon_id = randint(0, 1126)
+        pokemon = pokemonClient.get_pokemon(pokemon_id)
+        pokemon_name = pokemon.forms[0].name
+        botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
+        await ctx.channel.send(
+            str(ctx.author.name) + ' you\'ve caught a ' + str(pokemon_name.capitalize()) + '! Gotta catch \'em all!')
+    except beckett.exceptions.InvalidStatusCodeError as e:
+        print(e)
+        await ctx.channel.send(botDB.getEscapePhrase())
 
 
 @bot.command(name="pokedex")
 async def pokedex(ctx, *, msg=None):
-    pokemons = ""
+    # pokemons = ""
     if msg is None:
-        msg = ctx.author.name
-    mons = botDB.getPokedex(msg)
+        msg = ctx.author.name.lower()
+    mons = botDB.getPokedex(msg.lower())
 
-    for mon in mons:
-        pokemons += mon['name'] + ", "
+    # for mon in mons:
+    #     pokemons += mon['name'] + ", "
 
-    await ctx.channel.send("Your pokedex has: " + pokemons)
+    await ctx.channel.send("Your pokedex has: " + mons)
 
 
 @bot.command(name="ban")
@@ -813,7 +817,6 @@ async def pyramid(ctx, *, msg):
     if not str(new[1]).isnumeric():
         await ctx.channel.send(f"Does \"{new[1]}\" look like a number to you!? Madge ")
         return
-
     x = int(new[1])
 
     if x > limit and ctx.author.name == "ws_zoomers":
@@ -833,6 +836,18 @@ async def pyramid(ctx, *, msg):
     for row in range(x - 1, 0, -1):
         column = column.rsplit(' ', 1)[0]
         await ctx.channel.send(column)
+
+
+@bot.command()
+async def weather(ctx, *, msg=None):
+    if msg is not None:
+        weather = requests.get(f"http://wttr.in/{msg}").text.split("\n")
+        for i in range(1, 7):
+            print(weather[i])
+            await ctx.channel.send(weather[i])
+            await sleep(0.3)
+    # else:
+    #     await ctx.channel.send("Please submit the name of the city")
 
 
 # bot.py
