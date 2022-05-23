@@ -1,32 +1,10 @@
-# import asyncio
-import os  # for importing env vars for the bot to use
+import os, re, beckett.exceptions, twitchio, pokepy, requests, botDB
 from asyncio import sleep
-# from multiprocessing import get_context
-# from pickletools import string1
 from random import randint
-# from pprint import pprint
-# import pubSub
-import beckett.exceptions
-import twitchio
-import pokepy
-# import json
-import requests
-# from requests import get
 from spellchecker import SpellChecker
 from twitchio import Channel, User, Client
 from twitchio.ext import eventsub, commands, pubsub
-import botDB
 from tqdm import tqdm
-# from pprint import pprint
-
-# setting up database connection
-# myClient = pymongo.MongoClient("mongodb://localhost:27017/")
-# admin = myClient.admin
-# serverStatusResult=admin.command("serverStatus")
-# pprint(serverStatusResult)
-# botDB = myClient["botDatabase"]
-# chatUsers = botDB["users"]
-# userDict = [""]
 
 # some vars
 import spotify_playing
@@ -119,7 +97,7 @@ async def event_message(a):
 async def event_message(msg):
     author = str(msg.author).split()
     words2 = msg.content.split()
-    botDB.incMessages(msg.author.name.lower())
+    botDB.incMessages(msg.author.channel.name.lower())
     # if "nightbot" in word:
     if "caught" in words2:
         pokemon_name = words2[4].strip("!")
@@ -303,7 +281,7 @@ async def ww(ctx, *, msg):
 
 
 @bot.command(name="w", aliases=['t'])
-async def w(ctx, *, msg):
+async def weak_type(ctx, *, msg):
     damage = {'4x': [], '2x': [], '1x': [], '0.5x': [], '0.25x': [], '0x': []}
     pokemon_type = msg.split()
     x = 1
@@ -475,15 +453,15 @@ async def trigger(ctx, *, msg):
 #     botDB.insert(query)
 
 
-@bot.command(name="adddeath", aliases=['t'])
-async def adddeath(ctx, *, msg):
-    botDB.setDeathMsg(msg)
-
-
-@bot.command(name="deathlog", aliases=['t'])
-async def deathLog(ctx):
-    msg = botDB.getRandDeathMsg()
-    await ctx.channel.send(msg)
+# @bot.command(name="adddeath", aliases=['t'])
+# async def adddeath(ctx, *, msg):
+#     botDB.setDeathMsg(msg)
+#
+#
+# @bot.command(name="deathlog", aliases=['t'])
+# async def deathLog(ctx):
+#     msg = botDB.getRandDeathMsg()
+#     await ctx.channel.send(msg)
 
 
 @bot.command(name="move")
@@ -534,15 +512,25 @@ async def timer(ctx, *, msg):
         msg = int(msg)
         msg *= 60
     if int(msg) > 0:
-        minutes = int(msg) / 60
-        print("send")
-        await ctx.channel.send("Timer " + str(minutes) + "started :)")
+        mins = int(msg) / 60
+        secs = str(int(msg) % 60) + "s"
+        hours = mins / 60
+        hours = str(round(hours)) + "h"
+        mins = mins % 60
+        mins = str(round(mins)) + "m"
+        if mins == "0m":
+            mins = ""
+        if hours == "0h":
+            hours = ""
+        if secs == "0s":
+            secs = ""
+        await ctx.channel.send("Timer " + hours + mins + secs + " started :)")
         await sleep(int(msg))
-        await ctx.channel.send("Timer of " + str(minutes) + " min, just ran out!")
+        await ctx.channel.send("Timer of " + hours + mins + secs + ", just ran out!")
 
 
 @bot.command(name="ryan")
-async def timer(msg):
+async def ryan(msg):
     await msg.channel.send("FeelsAmazingMan oiler")
 
 
@@ -577,7 +565,7 @@ async def dance(msg):
                 "AAAAE-A-E-I-E-A-JO-ooo-oo-oo-oo EEEEO-A-AAA-AAAA ")
 
 
-@bot.command(name="coinflip")
+@bot.command(name="coinflip", aliases=['cf'])
 async def coinflip(msg):
     number = randint(1, 2)
     if number == 1:
@@ -778,7 +766,7 @@ def spell_check(word):
 
 
 @bot.command(name="spotify")
-async def spotifyToken(ctx, *, msg):
+async def spotify_token(ctx):
     await ctx.channel.send("You can sign up here :) -> https://accounts.spotify.com/authorize?client_id"
                            "=90082084b6b6423f8f08dd85e74f42b4&response_type=code&redirect_uri=https://b816-103-219-21"
                            "-123.eu.ngrok.io/&scope=user-read-currently-playing")
@@ -839,16 +827,10 @@ async def pyramid(ctx, *, msg):
 
 
 @bot.command()
-async def weather(ctx, *, msg=None):
-    if msg is not None:
-        weather = requests.get(f"http://wttr.in/{msg}").text.split("\n")
-        for i in range(1, 7):
-            print(weather[i])
-            await ctx.channel.send(weather[i])
-            await sleep(0.3)
-    # else:
-    #     await ctx.channel.send("Please submit the name of the city")
-
+async def weather(ctx, *, msg):
+    link = ""
+    api_key = os.environ['OPENWEATHER_API_KEY']
+    result = requests.get(link + msg)
 
 # bot.py
 if __name__ == "__main__":
