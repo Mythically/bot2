@@ -97,7 +97,7 @@ async def event_message(a):
 async def event_message(msg):
     author = str(msg.author).split()
     words2 = msg.content.split()
-    botDB.incMessages(msg.author.channel.name.lower())
+    botDB.incMessages(msg.author.name.lower())
     # if "nightbot" in word:
     if "caught" in words2:
         pokemon_name = words2[4].strip("!")
@@ -420,6 +420,7 @@ async def trigger(ctx, *, msg):
     trigger_held_item = evolution_details.held_item
     trigger_happiness = evolution_details.min_happiness
     pokemon_message = ' '
+    pokemon_message += msg + " -> " + pokemon_name2 + " "
     if trigger_happiness is not None:
         pokemon_message += "Min happiness: " + str(trigger_happiness)
     if trigger_level is not None:
@@ -431,7 +432,8 @@ async def trigger(ctx, *, msg):
     if trigger_trade is not None:
         pokemon_message += "Needs to be traded!"
     if trigger_move is not None:
-        pokemon_message += "Needs to know a move:" + str(trigger_move)
+        pokemon_message += "Needs to know a move:   " + str(trigger_move).replace("<Named_API_Resource |", "").replace(
+            ">", "")
     if trigger_move_type is not None:
         pokemon_message += "Needs to know a move of type: " + str(trigger_move_type)
     if trigger_item is not None:
@@ -498,7 +500,7 @@ async def time_outed(msg):
 async def kill(msg):
     print(msg.channel.name)
 
-    if msg.author.name == msg.channel.name or msg.author.name == "themythh" or msg.author.is_mod:
+    if msg.author.is_broadcaster or msg.author.name == "themythh" or msg.author.is_mod:
         await msg.channel.send("Bye! :)")
         await bot.close()
 
@@ -596,12 +598,18 @@ async def saveskygod(msg):
 #         await sleep(0.5)
 #         await msg.channel.send('/me  O-oooooooooo AAAAE-A-A-I-A-U- JO-oooooooooooo AAE-O-A-A-U-U-A- E-eee-ee-eee AAAAE-A-E-I-E-A-JO-ooo-oo-oo-oo EEEEO-A-AAA-AAAA ')
 
-@bot.command(name="join", aliases=['t'])
+@bot.command(name="join")
 async def join(ctx, *, msg):
     channel_name = [msg]
     await bot.join_channels(channel_name)
     await ctx.channel.send("Joined channel: " + str(channel_name))
     print(channel_name)
+
+
+@bot.command(name="leave")
+async def leave(ctx):
+    channel_name = ctx.channel.name
+    await bot.part_channels[channel_name]
 
 
 @bot.command(name="mon")
@@ -612,7 +620,8 @@ async def pokemon(ctx):
         pokemon_name = pokemon.forms[0].name
         botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
         await ctx.channel.send(
-            str(ctx.author.name) + ' you\'ve caught a ' + str(pokemon_name.capitalize()) + '! Gotta catch \'em all!')
+            "@" + str(ctx.author.name) + ' you\'ve caught a ' + str(
+                pokemon_name.capitalize()) + '! Gotta catch \'em all!')
     except beckett.exceptions.InvalidStatusCodeError as e:
         print(e)
         await ctx.channel.send(botDB.getEscapePhrase())
@@ -620,15 +629,40 @@ async def pokemon(ctx):
 
 @bot.command(name="pokedex")
 async def pokedex(ctx, *, msg=None):
-    # pokemons = ""
+    if msg == "deviation":
+        mons = botDB.getPokedex(ctx.author.name)
+        spread = {}
+        total = 0
+        check = 0
+        for mon in mons:
+            print(mon["name"])
+            first_letter = mon['name'][0]
+            try:
+                spread[f"{first_letter}"] += 1
+                continue
+            except KeyError:
+                spread[f"{first_letter}"] = 0
+            spread[f"{first_letter}"] += 1
+        for key in spread:
+            total += spread[f"{key}"]
+        for key in spread:
+            spread[f"{key}"] = str(round((spread[f"{key}"] / total) * 100, 2)) + "%"
+        await ctx.channel.send(spread)
+        return
+    mons = botDB.getPokedex(msg.lower())
+    pokemons = ""
     if msg is None:
         msg = ctx.author.name.lower()
     mons = botDB.getPokedex(msg.lower())
+    for mon in mons:
+        if len(pokemons + mon['name'] + ", ") < 500:
+            pokemons += mon['name'] + ", "
+        if len(pokemons + mon['name'] + ", ") > 500:
+            await ctx.channel.send(pokemons)
+            pokemons = ""
+            await sleep(1)
 
-    # for mon in mons:
-    #     pokemons += mon['name'] + ", "
-
-    await ctx.channel.send("Your pokedex has: " + mons)
+    await ctx.channel.send("Your pokedex has: " + pokemons)
 
 
 @bot.command(name="ban")
@@ -831,6 +865,20 @@ async def weather(ctx, *, msg):
     link = ""
     api_key = os.environ['OPENWEATHER_API_KEY']
     result = requests.get(link + msg)
+
+
+# @bot.command(name="weather")
+# async def weather(ctx, *, msg):
+#     result = requests.get("")
+
+
+@bot.command(name="fact")
+async def facts(ctx, *, msg=None):
+    if msg is None:
+        facts = ["random/math", "random/trivia", "random/year", "random/date"]
+        number = randint(0, 3)
+        await ctx.channel.send(requests.get("http://numbersapi.com/" + facts[number]).text)
+
 
 # bot.py
 if __name__ == "__main__":

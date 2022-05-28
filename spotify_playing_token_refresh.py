@@ -21,8 +21,9 @@ def getFinalTokenPair(channel_name):
                             data={'grant_type': 'authorization_code',
                                   'code': 'auth_code',
                                   'redirect_uri': 'http://localhost'}
-                            )
-    # botDB.insetSpotifyRefreshToken()
+                            ).json()
+    # code  = response.code
+    # if botDB.insetSpotifyRefreshToken():
 
 
 def tokenManager(channel_name, ctx_channel):

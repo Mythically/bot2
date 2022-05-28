@@ -9,7 +9,6 @@ pokepy = "*"
 pymongo = "*"
 pyvjoy = "*"
 flask = "*"
-jupyter = "*"
 pylint = "*"
 
 [dev-packages]

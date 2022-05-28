@@ -19,7 +19,7 @@ botExampleMons = botDB["exampleMons"]
 spotifyTokens = botDB["spotifyRefreshTokens"]
 botGeneric = botDB['bot']
 
-# pprint(serverStatusResult)
+# # pprint(serverStatusResult)
 
 def insert(dict_arg):
     my_query = dict_arg
@@ -58,7 +58,7 @@ def insertEmote(dict_arg):
 # def insetSpotifyRefreshToken(channel_name, refresh_token):
 #     try:
 #         x = spotifyTokens.find({'name': f'{channel_name}'})[0]['name']
-#         print(x)
+# #         print(x)
 #     except NameError:
 #         return NameError.name + "\nAn error has occurred, please try again."
 #     else:
@@ -73,22 +73,22 @@ def insertEmote(dict_arg):
 #########################################################
 
 def newUser(username):
-    print("checking")
+    # print("checking")
     if chatUsers.find_one({"username": username}) is None:
-        print("none")
+        # print("none")
         try:
             chatUsers.insert_one({"username": username, "lastSeen": t.time(), "messages": 1})
             return True
         except Exception as e:
-            print(e)
+            # print(e)
             return False
     return False
 
 
 def incMessages(username):
-    print(newUser(username))
+    # print(newUser(username))
     if not newUser(username):
-        print(username)
+        # print(username)
         chatUsers.update_one({"username": username},
                              {"$set": {"lastSeen": t.time()}})
         chatUsers.update_one({"username": username},
@@ -100,7 +100,7 @@ def incMessages(username):
 #########################################################
 
 def checkTokenAge(token_time: float):
-    print(abs(token_time - t.time()))
+    # print(abs(token_time - t.time()))
     if abs(token_time - t.time()) < 3540:
         return True
     else:
@@ -111,27 +111,30 @@ def fetchToken(channel_name: str, ctx_channel):
     try:
         return spotifyTokens.find({'name': f'{channel_name}'})
     except Exception as e:
-        print(e)
+        # print(e)
         return bot.send_message("Error has occurred", ctx_channel)
 
 
 def updateToken(channel_name, refresh_token, ctx_channel):
     try:
         # spotifyTokens.find_one_and_update()
-        print(channel_name, refresh_token)
+        # print(channel_name, refresh_token)
         spotifyTokens.update_one({'name': f'{channel_name}'},
                                  {'$set': {'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'}}, upsert=True)
     except Exception as e:
-        print(e)
+        # print(e)
         return bot.send_message("An error has occurred, please try again!", ctx_channel)
 
 
 def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
+    if checkIfAlreadyInserted(channel_name):
+        return False
     try:
         spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'getToken': f'{get_token}',
                               'time': f'{t.time()}'})
+        return True
     except Exception as e:
-        print(e)
+        # print(e)
         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
 
 
@@ -142,7 +145,7 @@ def checkIfAlreadyInserted(chnnel_name):
         else:
             return False
     except Exception as e:
-        print(e)
+        # print(e)
         return
 
 
@@ -150,10 +153,10 @@ def checkSpotifyRefreshToken(channel_name):
     try:
         x = spotifyTokens.find({'name': f'{channel_name}'})
         if x[0]['name'] is not None:
-            print(x[0]['refreshToken'])
+            # print(x[0]['refreshToken'])
             return f"@{channel_name}" + " You have a key in the database."
     except Exception as e:
-        print(e)
+        # print(e)
         return f"@{channel_name}" + " You do not have a key in the database."
 
 
@@ -179,7 +182,7 @@ def insertCaughtPokemon(pokemon_name, username):
                                  {'$addToSet': {'caughtPokemon': {'name': f'{pokemon_name}'}}})
         return "Caught successfully"
     except Exception as e:
-        print(e)
+        # print(e)
         return "Error occurred"
 
 
@@ -188,17 +191,17 @@ def getPokedex(username):
     try:
         if chatUsers.find_one({'username': username}) is not None:
             caught_pokemon = chatUsers.find_one({'username': username})['caughtPokemon']
-            print(len(caught_pokemon))
-            print("lenght ^^^")
+            # print(len(caught_pokemon))
+            # print("lenght ^^^")
             # if len(caught_pokemon) == 0:
             #     return "You have not yet caught a mon, use !mon to catch one!"
             # for pokemon in caught_pokemon:
             #     mons += pokemon
             return caught_pokemon
     except TypeError as e:
-        print("ERROR")
-        print(e)
+        # print("ERROR")
+        # print(e)
         return "Are you sure you have caught any mons? Try to catch one with !mon and look at your pokedex again."
     except KeyError as e:
-        print(e)
+        # print(e)
         return "It seems that you have not caught any pokemon! Try to catch one with !mons"
