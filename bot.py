@@ -97,7 +97,8 @@ async def event_message(a):
 async def event_message(msg):
     author = str(msg.author).split()
     words2 = msg.content.split()
-    botDB.incMessages(msg.author.name.lower())
+    name = msg.author.name.lower()
+    await botDB.incMessages(name)
     # if "nightbot" in word:
     if "caught" in words2:
         pokemon_name = words2[4].strip("!")
@@ -119,20 +120,20 @@ async def event_message(msg):
 #     response = requests.get("https://api.twitch.tv/helix/users?login=zack_ko")
 #     fetch = response.json()
 #     print(fetch)
-
-
-@client.event()
-async def event_raw_usernotice(channel: Channel, tags: dict):
-    print("Channel " + str(channel) + " tags " + str(tags))
-    listing = tags.items()
-    stringify = ""
-    for item in range(len(listing)):
-        stringify += item
-
-    print("TAGS: " + stringify)
-    if "first-msg" in tags:
-        await channel.send("First message")
-
+#
+#
+# @client.event()
+# async def event_raw_usernotice(channel: Channel, tags: dict):
+#     print("Channel " + str(channel) + " tags " + str(tags))
+#     listing = tags.items()
+#     stringify = ""
+#     for item in range(len(listing)):
+#         stringify += item
+#
+#     print("TAGS: " + stringify)
+#     if "first-msg" in tags:
+#         await channel.send("First message")
+#
 
 # @client.event()
 # async def event_pubsub_bits(event):
@@ -618,10 +619,13 @@ async def pokemon(ctx):
         pokemon_id = randint(0, 1126)
         pokemon = pokemonClient.get_pokemon(pokemon_id)
         pokemon_name = pokemon.forms[0].name
+        link_pokemon_name = pokemon_name.split("-")
+        link_pokemon_name = str(link_pokemon_name[0]).strip("[").strip("]").strip("\'")
+        link = f"https://pokemondb.net/pokedex/{link_pokemon_name}"
         botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
         await ctx.channel.send(
             "@" + str(ctx.author.name) + ' you\'ve caught a ' + str(
-                pokemon_name.capitalize()) + '! Gotta catch \'em all!')
+                pokemon_name.capitalize()) + "! " + link + ' Gotta catch \'em all!')
     except beckett.exceptions.InvalidStatusCodeError as e:
         print(e)
         await ctx.channel.send(botDB.getEscapePhrase())
@@ -649,7 +653,6 @@ async def pokedex(ctx, *, msg=None):
             spread[f"{key}"] = str(round((spread[f"{key}"] / total) * 100, 2)) + "%"
         await ctx.channel.send(spread)
         return
-    mons = botDB.getPokedex(msg.lower())
     pokemons = ""
     if msg is None:
         msg = ctx.author.name.lower()
@@ -860,11 +863,11 @@ async def pyramid(ctx, *, msg):
         await ctx.channel.send(column)
 
 
-@bot.command()
-async def weather(ctx, *, msg):
-    link = ""
-    api_key = os.environ['OPENWEATHER_API_KEY']
-    result = requests.get(link + msg)
+# @bot.command()
+# async def weather(ctx, *, msg):
+#     link = ""
+#     api_key = os.environ['OPENWEATHER_API_KEY']
+#     result = requests.get(link + msg)
 
 
 # @bot.command(name="weather")

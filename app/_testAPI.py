@@ -26,8 +26,8 @@ def getData():
     if value is not None:
         if not botDB.checkIfAlreadyInserted(value):
             data = requestAuthorization()
-            access_token = data['access_token']
-            refresh_token = data['refresh_token']
+            access_token: str = data['access_token']
+            refresh_token: str = data['refresh_token']
         else:
             return "This username is already in the database, please check your submission"
     return "Your username has been saved"

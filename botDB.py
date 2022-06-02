@@ -85,7 +85,7 @@ def newUser(username):
     return False
 
 
-def incMessages(username):
+async def incMessages(username):
     # print(newUser(username))
     if not newUser(username):
         # print(username)
@@ -96,7 +96,7 @@ def incMessages(username):
 
 
 #########################################################
-################### TOKEN MANAGMENT #####################
+############### SPOTIFY TOKEN MANAGMENT #################
 #########################################################
 
 def checkTokenAge(token_time: float):
