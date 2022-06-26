@@ -95,24 +95,27 @@ async def event_message(a):
 
 @bot.event()
 async def event_message(msg):
-    author = str(msg.author).split()
-    words2 = msg.content.split()
-    name = msg.author.name.lower()
-    await botDB.incMessages(name)
-    # if "nightbot" in word:
-    if "caught" in words2:
-        pokemon_name = words2[4].strip("!")
-        pokemon = [pokemonClient.get_pokemon(pokemon_name.lower())]
-        pokemon_id = pokemon[0].id
-        await msg.channel.send(f"Detected pokemon: {pokemon_name}, #{pokemon_id}")
-    for word in author:
-        if "stream" in word:
-            for word in words:
-                if "hoss" in word and word != "frathoss":
-                    await msg.channel.send(f"/ban {word}")
-                    await msg.channel.send("Another hoss bites the dust PogChamp")
-    if "buy" and "followers" and "viewers" and "primes" in msg.content:
-        await msg.channel.send("banned")
+    if msg.author:
+        author = str(msg.author).split()
+        words2 = msg.content.split()
+        name = msg.author.name.lower()
+        if name == "thenerdgebot":
+            return
+        await botDB.incMessages(name)
+        # if "nightbot" in word:
+        if "caught" in words2:
+            pokemon_name = words2[4].strip("!")
+            pokemon = [pokemonClient.get_pokemon(pokemon_name.lower())]
+            pokemon_id = pokemon[0].id
+            await msg.channel.send(f"Detected pokemon: {pokemon_name}, #{pokemon_id}")
+        for word in author:
+            if "stream" in word:
+                for word in words:
+                    if "hoss" in word and word != "frathoss":
+                        await msg.channel.send(f"/ban {word}")
+                        await msg.channel.send("Another hoss bites the dust PogChamp")
+        if "buy" and "followers" and "viewers" and "primes" in msg.content:
+            await msg.channel.send(f"/ban {name}")
 
 
 # @bot.command(name="user")
@@ -153,7 +156,7 @@ async def test(msg):
     await msg.channel.send('test passed!')
 
 
-@bot.command(name="type", aliases=['t'])
+@bot.command(name="type")
 async def types2(ctx, *, msg):
     pokemon = [pokepy.V2Client().get_pokemon(msg.lower())]
     pokemon_type = ""
@@ -164,8 +167,10 @@ async def types2(ctx, *, msg):
     # return list(pokemon_type)
 
 
-@bot.command(name='weak', aliases=['t'])
+@bot.command(name='weak')
 async def ww(ctx, *, msg):
+    if " " in msg:
+        msg = msg.replace(" ", "-")
     typings = ''
     damage = {'4x': [], '2x': [], '1x': [], '0.5x': [], '0.25x': [], '0x': []}
     pokemon = [pokemonClient.get_pokemon(msg.lower())]
@@ -268,6 +273,7 @@ async def ww(ctx, *, msg):
             damage['2x'].remove(type)
 
     message1 = ''
+    message2 = ''
     if damage['4x']:
         message1 = ', '.join(damage['4x'])
         # for x in range(len(damage['4x'])):
@@ -281,7 +287,7 @@ async def ww(ctx, *, msg):
     await ctx.channel.send(pokemon[0].name + ' is: ' + typings + ' takes 2x: ' + message2)
 
 
-@bot.command(name="w", aliases=['t'])
+@bot.command(name="w")
 async def weak_type(ctx, *, msg):
     damage = {'4x': [], '2x': [], '1x': [], '0.5x': [], '0.25x': [], '0x': []}
     pokemon_type = msg.split()
@@ -377,7 +383,7 @@ async def weak_type(ctx, *, msg):
     await ctx.channel.send(str(message))
 
 
-@bot.command(name="trigger", aliases=['t'])
+@bot.command(name="trigger")
 async def trigger(ctx, *, msg):
     if msg.isnumeric() is True:
         pokemon_id = msg
@@ -387,7 +393,6 @@ async def trigger(ctx, *, msg):
         print(pokemon, pokemon_id)
     pokemon = [pokemonClient.get_pokemon(msg.lower())]
     # print(pokemon_id)
-    # await ctx.channel.send(chain[0].chain.evolves_to.species.name)
     id = [pokemonClient.get_pokemon_species(pokemon_id)]
     pokemon_species_id = id[0].evolution_chain.url
     pokemon_evolution_id = pokemon_species_id.split("/")[-2]
@@ -399,15 +404,20 @@ async def trigger(ctx, *, msg):
     # pokemon_evolution_details = pokemon_evolution[0].chain.evolves_to[0].evolution_details
     pokemon_name1 = pokemon_evolution[0].chain.species.name
     pokemon_name2 = pokemon_evolution[0].chain.evolves_to[0].species.name
+    pokemon_name3 = pokemon_evolution[0].chain.evolves_to[0].evolves_to[0].species.name
     # print(msg)
     # print(pokemon[0].name)
     # print(pokemon_name1 + "1st evolution")
     # print(pokemon_name2 + "2nd evolution")
+    pokemon_message = ' '
     if pokemon[0].name == pokemon_name1:
         evolution_details = pokemon_evolution[0].chain.evolves_to[0].evolution_details[0]
-
+        pokemon_message += pokemon[0].name + " -> " + pokemon_name2 + "; "
     elif pokemon[0].name == pokemon_name2:
         evolution_details = pokemon_evolution[0].chain.evolves_to[0].evolves_to[0].evolution_details[0]
+        pokemon_message += pokemon[0].name + " -> " + pokemon_name3 + "; "
+    elif pokemon[0].name == pokemon_name3:
+        await ctx.channel.send(f"{pokemon[0].name} doesn't evolve AFAIK :3")
 
     else:
         evolution_details = pokemon_evolution[0].chain.evolves_to[0].evolves_to[0].evolution_details[0]
@@ -420,8 +430,7 @@ async def trigger(ctx, *, msg):
     trigger_item = evolution_details.item
     trigger_held_item = evolution_details.held_item
     trigger_happiness = evolution_details.min_happiness
-    pokemon_message = ' '
-    pokemon_message += msg + " -> " + pokemon_name2 + " "
+
     if trigger_happiness is not None:
         pokemon_message += "Min happiness: " + str(trigger_happiness)
     if trigger_level is not None:
@@ -438,7 +447,7 @@ async def trigger(ctx, *, msg):
     if trigger_move_type is not None:
         pokemon_message += "Needs to know a move of type: " + str(trigger_move_type)
     if trigger_item is not None:
-        pokemon_message += "Needs the item to evolve: " + str(trigger_item.name)
+        pokemon_message += "Needs an item to evolve: " + str(trigger_item.name)
     if trigger_held_item is not None:
         pokemon_message += "Needs to hold item to evolve: " + str(trigger_held_item)
 
@@ -446,25 +455,6 @@ async def trigger(ctx, *, msg):
         await ctx.channel.send("Another evolution trigger that I have not accounted for yet, please bare with me :3")
         return
     await ctx.channel.send(pokemon_message)
-
-
-# @bot.command(name="add", aliases=['t'])
-# async def add(ctx, *, msg):
-#     message = msg.split()
-#     user = ctx.author.name
-#     query = {'_id': message[0], 'pokemon': {message[1]: True}}
-#     botDB.insert(query)
-
-
-# @bot.command(name="adddeath", aliases=['t'])
-# async def adddeath(ctx, *, msg):
-#     botDB.setDeathMsg(msg)
-#
-#
-# @bot.command(name="deathlog", aliases=['t'])
-# async def deathLog(ctx):
-#     msg = botDB.getRandDeathMsg()
-#     await ctx.channel.send(msg)
 
 
 @bot.command(name="move")
@@ -506,7 +496,7 @@ async def kill(msg):
         await bot.close()
 
 
-@bot.command(name="timer", aliases=['t'])
+@bot.command(name="timer")
 async def timer(ctx, *, msg):
     if 's' in msg:
         msg = msg[:-1]
@@ -545,7 +535,7 @@ async def lag(msg):
             await msg.channel.send("SourPls LAG THE CHAT SourPls ")
 
 
-@bot.command(name="so", aliases=['t'])
+@bot.command(name="so")
 async def so(ctx, *, msg):
     await ctx.channel.send("Yo what are you waiting for, go check out " + msg + " at www.twitch.tv/" + msg)
 
@@ -721,7 +711,7 @@ async def banTXT(ctx):
 #     await ctx.channel.send("Dictionary set to "+msg)
 
 
-# @bot.command(name="leave", aliases=['t'])
+# @bot.command(name="leave")
 # async def leave(ctx, *, msg):
 #     channel_name = [msg]
 #     await bot.
@@ -782,6 +772,15 @@ async def ffzemotes(ctx, *, msg=None):
             emoteString += str(emoticon['name'] + " ")
     await ctx.channel.send(emoteString)
 
+def ffzemotes2(msg):
+    emoteString = ""
+    response = requests.get("https://api.frankerfacez.com/v1/room/" + msg)
+    fetch = response.json()
+
+    for account, id in fetch['sets'].items():
+        for emoticon in id['emoticons']:
+            emoteString += str(emoticon['name'] + " ")
+    return emoteString
 
 @bot.command(name="song")
 async def spotify_current_song(ctx):
@@ -863,6 +862,12 @@ async def pyramid(ctx, *, msg):
         await ctx.channel.send(column)
 
 
+@bot.command(name="r")
+async def randd(ctx, *, msg="None"):
+    number = randint(1, 3)
+    await ctx.channel.send(str(number))
+
+
 # @bot.command()
 # async def weather(ctx, *, msg):
 #     link = ""
@@ -874,6 +879,11 @@ async def pyramid(ctx, *, msg):
 # async def weather(ctx, *, msg):
 #     result = requests.get("")
 
+@bot.command()
+async def dia(ctx):
+    await ctx.channel.send("Channel?")
+    response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
+    await ctx.channel.send(ffzemotes2(response[0].content))
 
 @bot.command(name="fact")
 async def facts(ctx, *, msg=None):
