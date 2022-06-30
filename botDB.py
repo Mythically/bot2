@@ -138,9 +138,9 @@ def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
 
 
-def checkIfAlreadyInserted(chnnel_name):
+def checkIfAlreadyInserted(channel_name):
     try:
-        if chatUsers.find_one({"username": chnnel_name}) is not None:
+        if chatUsers.find_one({"username": channel_name}) is not None:
             return True
         else:
             return False

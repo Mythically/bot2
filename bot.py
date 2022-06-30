@@ -1,4 +1,5 @@
-import os, re, beckett.exceptions, twitchio, pokepy, requests, botDB
+import datetime
+import os, re, beckett.exceptions, twitchio, pokepy, requests, botDB, emoji
 from asyncio import sleep
 from random import randint
 from spellchecker import SpellChecker
@@ -99,7 +100,7 @@ async def event_message(msg):
         author = str(msg.author).split()
         words2 = msg.content.split()
         name = msg.author.name.lower()
-        if name == "thenerdgebot":
+        if msg.echo:
             return
         await botDB.incMessages(name)
         # if "nightbot" in word:
@@ -772,6 +773,7 @@ async def ffzemotes(ctx, *, msg=None):
             emoteString += str(emoticon['name'] + " ")
     await ctx.channel.send(emoteString)
 
+
 def ffzemotes2(msg):
     emoteString = ""
     response = requests.get("https://api.frankerfacez.com/v1/room/" + msg)
@@ -781,6 +783,7 @@ def ffzemotes2(msg):
         for emoticon in id['emoticons']:
             emoteString += str(emoticon['name'] + " ")
     return emoteString
+
 
 @bot.command(name="song")
 async def spotify_current_song(ctx):
@@ -880,10 +883,17 @@ async def randd(ctx, *, msg="None"):
 #     result = requests.get("")
 
 @bot.command()
-async def dia(ctx):
-    await ctx.channel.send("Channel?")
-    response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
-    await ctx.channel.send(ffzemotes2(response[0].content))
+async def dia(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please send a message")
+    # response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
+    await ctx.channel.send(msg)
+
+
+@bot.command()
+async def fog(ctx):
+    await ctx.channel.send(emoji.emojize(":fog:", use_aliases=True))
+
 
 @bot.command(name="fact")
 async def facts(ctx, *, msg=None):
@@ -891,6 +901,197 @@ async def facts(ctx, *, msg=None):
         facts = ["random/math", "random/trivia", "random/year", "random/date"]
         number = randint(0, 3)
         await ctx.channel.send(requests.get("http://numbersapi.com/" + facts[number]).text)
+
+
+@bot.command(name="8ball")
+async def eight_ball(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please ask a question")
+        return
+    answers = ["It is certain", "It is decidedly so", "Without a doubt", "Yes, definitely", "You may rely on it",
+               "As I see it, yes", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy try again",
+               "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again",
+               "Don't count on it", "My reply is no", "My sources say no", "Outlook not so good", "Very doubtful"]
+    await ctx.channel.send(answers[randint(0, len(answers) - 1)])
+
+
+# use pokeapi.com to get pokemon info
+# messages should be less than 500 characters
+@bot.command(name="pokemon")
+async def pokemon(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please enter a pokemon name")
+        return
+    response = requests.get("https://pokeapi.co/api/v2/pokemon/" + msg)
+    if response.status_code == 404:
+        await ctx.channel.send("Pokemon not found")
+        return
+    response = response.json()
+    await ctx.channel.send(
+        f"{response['name']} is a {response['height']} tall {response['weight']} heavy {response['types'][0]['type']['name']}")
+    await ctx.channel.send(f"{response['abilities'][0]['ability']['name']}")
+    await ctx.channel.send(f"{response['stats'][5]['base_stat']}")
+    await ctx.channel.send(f"{response['stats'][4]['base_stat']}")
+    await ctx.channel.send(f"{response['stats'][3]['base_stat']}")
+    await ctx.channel.send(f"{response['stats'][2]['base_stat']}")
+    await ctx.channel.send(f"{response['stats'][1]['base_stat']}")
+    await ctx.channel.send(f"{response['stats'][0]['base_stat']}")
+    await ctx.channel.send(f"{response['sprites']['front_default']}")
+    await ctx.channel.send(f"{response['sprites']['front_shiny']}")
+    await ctx.channel.send(f"{response['sprites']['back_default']}")
+    await ctx.channel.send(f"{response['sprites']['back_shiny']}")
+
+
+# use pokepy to decide what types are strong against each other in one message
+# message length should be less than 500 characters
+# verify if list index is out of range
+@bot.command(name="types")
+async def types(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please enter a type")
+        return
+    response = requests.get("https://pokeapi.co/api/v2/type/" + msg)
+    if response.status_code == 404:
+        await ctx.channel.send("Type not found")
+        return
+    response = response.json()
+    await ctx.channel.send(
+        f"{response['name']} is weak to: {response['damage_relations']['double_damage_from'][0]['name']}")
+    await ctx.channel.send(
+        f"{response['name']} is strong against: {response['damage_relations']['double_damage_to'][0]['name']}")
+    await ctx.channel.send(
+        f"{response['name']} is immune to: {response['damage_relations']['no_damage_from'][0]['name']}")
+    await ctx.channel.send(
+        f"{response['name']} is weak to: {response['damage_relations']['half_damage_from'][0]['name']}")
+    await ctx.channel.send(
+        f"{response['name']} is resistant against: {response['damage_relations']['half_damage_to'][0]['name']}")
+    await ctx.channel.send(
+        f"{response['name']} is deals no damage to: {response['damage_relations']['no_damage_to'][0]['name']}")
+
+
+# return long and lat of a city using openweathermap direct geocoding
+# save city name and long and lat to sql database
+async def get_city_coords(city_name):
+    response = requests.get(
+        "https://api.openweathermap.org/data/2.5/weather?q=" + city_name + "&appid=" + os.environ['OPENWEATHERMAP_API_KEY'])
+    if response.status_code == 404:
+        return None
+    response = response.json()
+    return response['coord']['lat'], response['coord']['lon']
+
+
+# check if user_id is in user_locations in mongodb
+def is_location_set(user_id):
+    user_location = botDB.botDB.user_locations.find_one({'user_id': user_id})
+    if user_location is None:
+        return False
+    return True
+
+#get user_id's location from mongodb
+def get_location(user_id):
+    user_location =  botDB.botDB.user_locations.find_one({'user_id': user_id})
+    return user_location['lat'], user_location['lon']
+
+# use coords_city() to get the weather of a city from openweathermap 2.5 api
+@bot.command(name="weather")
+async def weather(ctx, *, msg=None):
+    coords =[]
+    if msg is None:
+        if is_location_set(ctx.author.id):
+            coords = get_location(ctx.author.id)
+        else:
+            await ctx.channel.send("Please enter a city, or set your location with !set_location")
+            return
+    #check if list is empty
+    if not coords:
+        coords = await get_city_coords(msg)
+    lat = f"{coords[0]}"
+    lon = f"{coords[1]}"
+    response = requests.get(
+        f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid="
+        f"{os.environ['OPENWEATHERMAP_API_KEY']}&units=metric")
+    if response.status_code == 404:
+        await ctx.channel.send("City not found")
+        return
+    response = response.json()
+    emoji_icon = emoji_choice(response['weather'][0]['description'])
+    wind_direction = deg_to_cardinal(response['wind']['deg'])
+
+    await ctx.channel.send(
+        f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):"
+        f" {response['weather'][0]['description']} {emoji_icon}, {response['main']['temp']}ºC feels like "
+        f"{response['main']['feels_like']}ºC, Cloud cover: {response['clouds']['all']}%,Wind: {wind_direction} "
+        f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%,"
+        f" Pressure: {response['main']['pressure']}hPa, Sunrise: {unix_to_time(response['sys']['sunrise'])},"
+        f" Sunset: {unix_to_time(response['sys']['sunset'])}")
+
+
+
+# convert unix time to time of day
+def unix_to_time(unix_time):
+    return datetime.datetime.fromtimestamp(unix_time).strftime('%H:%M:%S')
+
+
+# send the respective emoji depending on weather description
+def emoji_choice(desc):
+    if desc == "clear sky":
+        return emoji.emojize(":sunny:", language='alias')
+    elif desc == "few clouds":
+        return emoji.emojize(":partly_sunny:", language='alias')
+    elif desc == "scattered clouds":
+        return emoji.emojize(":cloud:", language='alias')
+    elif desc == "broken clouds":
+        return emoji.emojize(":cloud:", language='alias')
+    elif desc == "shower rain":
+        return emoji.emojize(":rain_cloud:", language='alias')
+    elif desc == "rain":
+        return emoji.emojize(":cloud_rain:", language='alias')
+    elif desc == "thunderstorm":
+        return emoji.emojize(":thunder_cloud_rain:", language='alias')
+    elif desc == "snow":
+        return emoji.emojize(":snowflake:", language='alias')
+    elif desc == "mist":
+        return emoji.emojize(":fog:", language='alias')
+    elif desc == "overcast clouds":
+        return emoji.emojize(":cloud:", language='alias')
+    else:
+        return emoji.emojize(":sunny:", language='alias')
+
+
+# turn relative degrees to cardinal direction
+def deg_to_cardinal(deg):
+    deg = int(deg)
+    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    ix = round(deg / (360. / len(dirs)))
+    return dirs[ix % len(dirs)]
+
+
+# save the user's location to mongoDB database
+@bot.command(name="set_location")
+async def set_location(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please enter a city, or set your location with !set_location")
+        return
+    coords = await get_city_coords(msg)
+    lat = f"{coords[0]}"
+    lon = f"{coords[1]}"
+    if coords is None:
+        await ctx.channel.send("City not found")
+        return
+    user_id = ctx.author.id
+    user_location = {
+        "user_id": user_id,
+        "lat": lat,
+        "lon": lon
+    }
+    try:
+        botDB.botDB.user_locations.insert_one(user_location)
+    except Exception as e:
+        print(e)
+        await ctx.channel.send("Error saving location")
+        return
+    await ctx.channel.send("Location set")
 
 
 # bot.py
