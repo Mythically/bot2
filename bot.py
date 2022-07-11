@@ -1,25 +1,29 @@
+#!/usr/bin/env python3
+import asyncio
 import datetime
 import os, re, beckett.exceptions, twitchio, pokepy, requests, botDB, emoji
+import signal
+import subprocess as sp
+import sys
 from asyncio import sleep
 from random import randint
-from spellchecker import SpellChecker
-from twitchio import Channel, User, Client
+import spotify_playing
+# from spellchecker import SpellChecker
+# from twitchio import Channel, User, Client
+import asyncpg
 from twitchio.ext import eventsub, commands, pubsub
-from tqdm import tqdm
+# from tqdm import tqdm
 
 # some vars
-import spotify_playing
+
 
 i = 0
-words = ''
-spell = SpellChecker(language='en')
 pokemonClient = pokepy.V2Client()
 # client_disk_cache = pokepy.V2Client(cache='in_disk', cache_location='/temp')
 said_hi = False
-my_token = os.environ["TMI_TOKEN"]
 users_oauth_token = "se4xwnmyhahz1us708e7z3zasp8j9y"
 users_channel_id = 50458406
-client = twitchio.Client(token=my_token)
+client = twitchio.Client(token=os.environ["TMI_TOKEN"])
 client.pubsub = pubsub.PubSubPool(client)
 topic = [pubsub.bits(users_oauth_token)[users_channel_id]]
 
@@ -102,7 +106,8 @@ async def event_message(msg):
         name = msg.author.name.lower()
         if msg.echo:
             return
-        await botDB.incMessages(name)
+        user_id = int(msg.author.id)
+        await botDB.updateMessages(name, user_id)
         # if "nightbot" in word:
         if "caught" in words2:
             pokemon_name = words2[4].strip("!")
@@ -111,7 +116,7 @@ async def event_message(msg):
             await msg.channel.send(f"Detected pokemon: {pokemon_name}, #{pokemon_id}")
         for word in author:
             if "stream" in word:
-                for word in words:
+                for word in words2:
                     if "hoss" in word and word != "frathoss":
                         await msg.channel.send(f"/ban {word}")
                         await msg.channel.send("Another hoss bites the dust PogChamp")
@@ -613,25 +618,24 @@ async def pokemon(ctx):
         link_pokemon_name = pokemon_name.split("-")
         link_pokemon_name = str(link_pokemon_name[0]).strip("[").strip("]").strip("\'")
         link = f"https://pokemondb.net/pokedex/{link_pokemon_name}"
-        botDB.insertCaughtPokemon(pokemon_name, ctx.author.name)
+        await botDB.insertCaughtPokemon(int(pokemon_id), pokemon_name, int(ctx.author.id), ctx.author.name)
         await ctx.channel.send(
             "@" + str(ctx.author.name) + ' you\'ve caught a ' + str(
                 pokemon_name.capitalize()) + "! " + link + ' Gotta catch \'em all!')
     except beckett.exceptions.InvalidStatusCodeError as e:
         print(e)
-        await ctx.channel.send(botDB.getEscapePhrase())
+        await ctx.channel.send(str(await botDB.getEscapePhrase()))
 
 
 @bot.command(name="pokedex")
 async def pokedex(ctx, *, msg=None):
     if msg == "deviation":
-        mons = botDB.getPokedex(ctx.author.name)
+        mons = await botDB.getPokedex(ctx.author.name)
         spread = {}
         total = 0
         check = 0
         for mon in mons:
-            print(mon["name"])
-            first_letter = mon['name'][0]
+            first_letter = mon['pokemon_name'][0]
             try:
                 spread[f"{first_letter}"] += 1
                 continue
@@ -646,12 +650,15 @@ async def pokedex(ctx, *, msg=None):
         return
     pokemons = ""
     if msg is None:
-        msg = ctx.author.name.lower()
-    mons = botDB.getPokedex(msg.lower())
+        msg = ctx.author.name
+    mons = await botDB.getPokedex(msg)
+    if len(mons) == 0:
+        await ctx.channel.send("No pokemon found, use !mon to catch one!")
+        return
     for mon in mons:
-        if len(pokemons + mon['name'] + ", ") < 500:
-            pokemons += mon['name'] + ", "
-        if len(pokemons + mon['name'] + ", ") > 500:
+        if len(pokemons + mon['pokemon_name'] + ", ") < 500:
+            pokemons += mon['pokemon_name'] + ", "
+        if len(pokemons + mon['pokemon_name'] + ", ") > 500:
             await ctx.channel.send(pokemons)
             pokemons = ""
             await sleep(1)
@@ -795,15 +802,6 @@ async def spotify_current_song(ctx):
                                "broadcaster.")
 
 
-def spell_check(word):
-    global spell, words
-
-    misspelled = spell.unknown(word)
-    for word in misspelled:
-        words += word + ' '
-    return words
-
-
 @bot.command(name="spotify")
 async def spotify_token(ctx):
     await ctx.channel.send("You can sign up here :) -> https://accounts.spotify.com/authorize?client_id"
@@ -818,10 +816,6 @@ async def checkSpotifyToken(ctx):
 
 async def send_message(msg, channel):
     await channel.send(msg)
-
-
-def spell_correction(word):
-    return spell.correction(word)
 
 
 @bot.command(name="sayfile")
@@ -971,42 +965,36 @@ async def types(ctx, *, msg=None):
 
 # return long and lat of a city using openweathermap direct geocoding
 # save city name and long and lat to sql database
-async def get_city_coords(city_name):
+def get_city_coords(city_name):
     response = requests.get(
-        "https://api.openweathermap.org/data/2.5/weather?q=" + city_name + "&appid=" + os.environ['OPENWEATHERMAP_API_KEY'])
+        "https://api.openweathermap.org/data/2.5/weather?q=" + city_name + "&appid=" + os.environ[
+            'OPENWEATHERMAP_API_KEY'])
     if response.status_code == 404:
-        return None
+        return "Could not find city"
     response = response.json()
     return response['coord']['lat'], response['coord']['lon']
 
 
-# check if user_id is in user_locations in mongodb
-def is_location_set(user_id):
-    user_location = botDB.botDB.user_locations.find_one({'user_id': user_id})
-    if user_location is None:
-        return False
-    return True
-
-#get user_id's location from mongodb
-def get_location(user_id):
-    user_location =  botDB.botDB.user_locations.find_one({'user_id': user_id})
-    return user_location['lat'], user_location['lon']
-
 # use coords_city() to get the weather of a city from openweathermap 2.5 api
 @bot.command(name="weather")
 async def weather(ctx, *, msg=None):
-    coords =[]
+    coords = []
     if msg is None:
-        if is_location_set(ctx.author.id):
-            coords = get_location(ctx.author.id)
+        if await botDB.is_location_set(int(ctx.author.id)):
+            coords = await botDB.get_location(int(ctx.author.id))
+            lat = coords[0]['lat']
+            lon = coords[0]['lon']
         else:
             await ctx.channel.send("Please enter a city, or set your location with !set_location")
             return
-    #check if list is empty
+    # check if list is empty
     if not coords:
-        coords = await get_city_coords(msg)
-    lat = f"{coords[0]}"
-    lon = f"{coords[1]}"
+        coords = get_city_coords(msg)
+        if coords == "Could not find city":
+            await ctx.channel.send("Couldn't get city coordinates. Please check spelling and try again.")
+            return
+        lat = coords[0]
+        lon = coords[1]
     response = requests.get(
         f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid="
         f"{os.environ['OPENWEATHERMAP_API_KEY']}&units=metric")
@@ -1024,7 +1012,6 @@ async def weather(ctx, *, msg=None):
         f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%,"
         f" Pressure: {response['main']['pressure']}hPa, Sunrise: {unix_to_time(response['sys']['sunrise'])},"
         f" Sunset: {unix_to_time(response['sys']['sunset'])}")
-
 
 
 # convert unix time to time of day
@@ -1073,20 +1060,15 @@ async def set_location(ctx, *, msg=None):
     if msg is None:
         await ctx.channel.send("Please enter a city, or set your location with !set_location")
         return
-    coords = await get_city_coords(msg)
-    lat = f"{coords[0]}"
-    lon = f"{coords[1]}"
+    coords = get_city_coords(msg)
     if coords is None:
         await ctx.channel.send("City not found")
         return
-    user_id = ctx.author.id
-    user_location = {
-        "user_id": user_id,
-        "lat": lat,
-        "lon": lon
-    }
+    lat = coords[0]
+    lon = coords[1]
+    user_id = int(ctx.author.id)
     try:
-        botDB.botDB.user_locations.insert_one(user_location)
+        await botDB.set_location(user_id=user_id, city_name=msg, lat=lat, lon=lon, hidden=False)
     except Exception as e:
         print(e)
         await ctx.channel.send("Error saving location")
@@ -1094,6 +1076,52 @@ async def set_location(ctx, *, msg=None):
     await ctx.channel.send("Location set")
 
 
+#update user's location
+@bot.command(name="update_location", aliases=["ul"])
+async def update_location(ctx, *, msg=None):
+    if msg is None:
+        await ctx.channel.send("Please enter a city, or set your location with !set_location")
+        return
+    coords = get_city_coords(msg)
+    if coords is None:
+        await ctx.channel.send("City not found")
+        return
+    lat = coords[0]
+    lon = coords[1]
+    user_id = int(ctx.author.id)
+    response = await botDB.update_location(user_id=user_id, city_name=msg, lat=lat, lon=lon, hidden=False)#
+    await ctx.channel.send(response)
+
+
+@bot.command(name="restart")
+async def restart(ctx):
+    if ctx.author.id == os.environ['BOT_OWNER_ID']:
+        await ctx.channel.send("Restarting...")
+        sp.call('start /wait pipenv run python bot.py', shell=True)
+# os.execv(sys.executable, ['pipenv'] + sys.argv)
+    else:
+        await ctx.channel.send("Cheeky, but no :)")
+
+    # cmd_test.restart(os.getpid())
+    # await asyncio.sleep(5)
+    # ctx.channel.send("We back!")
+
+#fill message with string
+@bot.command()
+async def fill(ctx, *, msg):
+    filled = ""
+    while len(filled + msg) < 500:
+        filled += msg + " "
+    await ctx.channel.send(filled)
+
+
 # bot.py
 if __name__ == "__main__":
+    # bot.pool = bot.loop.run_until_complete(asyncpg.create_pool(
+    #     host=os.environ['DB_HOST'],
+    #     port=os.environ['DB_PORT'],
+    #     user=os.environ['DB_USER'],
+    #     password=os.environ['DB_PASSWORD'],
+    #     database=os.environ['DB_NAME']
+    # ))
     bot.run()

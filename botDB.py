@@ -1,58 +1,39 @@
-from pymongo import MongoClient
-from typing import TypedDict
-import time as t
+# import datetime
+import asyncio
+import logging
+import os
+import traceback
 
+import asyncpg
 import bot
 
 
-class UserKey(TypedDict):
-    name: str
-    refreshToken: str
+# import asyncio
+# from pymongo import MongoClient
+# import time as t
 
 
-myclient = MongoClient("mongodb://localhost:27017/")
-admin = myclient.admin
-botDB = myclient["botDatabase"]
-chatUsers = botDB["users"]
-serverStatusResult = admin.command("serverStatus")
-botExampleMons = botDB["exampleMons"]
-spotifyTokens = botDB["spotifyRefreshTokens"]
-botGeneric = botDB['bot']
-
-# # pprint(serverStatusResult)
-
-def insert(dict_arg):
-    my_query = dict_arg
-    chatUsers.insert(my_query)
-
-
-def dead(my_string):
-    my_query = my_string
-    chatUsers.find_and_modify(my_query, "False")
-
-
-# def inc(user):
-#     chatUsers.update('_id': user, $inc: {messages, +1})
-#     messenger = chatUsers.find('_id': user)
-#     messenger.upgade($inc {'messages': +1})
-
-# def setDeathMsg(my_string):
-#     my_query = my_string
-#     botQuotes.insert({'deathMsg': my_query})
 #
-#
-# def getRandDeathMsg():
-#     msg = botDB.quotes.aggregate(
-#         [{"$sample": {"size": 1}}]
-#     )
-#     for obj in msg:
-#         msg = (obj["deathMsg"])
-#     return str(msg)
+# myclient = MongoClient("mongodb://localhost:27017/")
+# admin = myclient.admin
+# botDB = myclient["botDatabase"]
+# chatUsers = botDB["users"]
+# serverStatusResult = admin.command("serverStatus")
+# botExampleMons = botDB["exampleMons"]
+# spotifyTokens = botDB["spotifyRefreshTokens"]
+# botGeneric = botDB['bot']
 
 
-def insertEmote(dict_arg):
-    my_query = dict_arg
-    chatUsers.insert(my_query)
+# create connection to database
+async def connect_to_db():
+    conn = await asyncpg.connect(
+        host=os.environ['DB_HOST'],
+        port=os.environ['DB_PORT'],
+        user=os.environ['DB_USER'],
+        password=os.environ['DB_PASSWORD'],
+        database=os.environ['DB_NAME']
+    )
+    return conn
 
 
 # def insetSpotifyRefreshToken(channel_name, refresh_token):
@@ -72,136 +53,192 @@ def insertEmote(dict_arg):
 ################### USERS MANAGMENT #####################
 #########################################################
 
-def newUser(username):
-    # print("checking")
-    if chatUsers.find_one({"username": username}) is None:
-        # print("none")
-        try:
-            chatUsers.insert_one({"username": username, "lastSeen": t.time(), "messages": 1})
+# if username not in database, add it in users postgresql
+async def newUser(username: str, user_id: int):
+    try:
+        conn = await connect_to_db()
+        if not await conn.fetchval("SELECT exists (SELECT 1 FROM users WHERE user_id = $1 limit 1)", user_id):
+            await conn.fetch("INSERT INTO users (username, user_id, messages) VALUES ($1, $2, $3)", username, user_id,
+                             1)
+        # await conn.close()
+        return True
+    except Exception as e:
+        print(e)
+
+
+# if username in database, update messages
+async def updateMessages(username: str, user_id: int):
+    if not await newUser(username, user_id):
+        return
+    try:
+        conn = await connect_to_db()
+        await conn.fetch("UPDATE users SET messages = messages + 1 WHERE username = $1", username)
+        await conn.close()
+    except Exception as e:
+        print(e)
+        return False
+
+
+# check if user_id is in user_locations in mongodb
+async def is_location_set(user_id: int):
+    try:
+        conn = await connect_to_db()
+        if await conn.fetchval("SELECT exists (SELECT user_id FROM user_locations WHERE user_id = $1 limit 1)",
+                               user_id):
+            await conn.close()
             return True
-        except Exception as e:
-            # print(e)
+        else:
+            await conn.close()
             return False
-    return False
+    except Exception as e:
+        print(e)
+        return False
 
 
-async def incMessages(username):
-    # print(newUser(username))
-    if not newUser(username):
-        # print(username)
-        chatUsers.update_one({"username": username},
-                             {"$set": {"lastSeen": t.time()}})
-        chatUsers.update_one({"username": username},
-                             {"$inc": {"messages": 1}})
+# set user location in postgresql
+async def set_location(user_id: int, city_name: str, lat: int, lon: int, hidden: bool):
+    try:
+        conn = await connect_to_db()
+        await conn.execute("INSERT INTO user_locations (user_id, city_name, lat, lon, hidden) VALUES "
+                           "($1, $2, $3, $4, $5)", user_id, city_name, lat, lon, hidden)
+        await conn.close()
+        return "Location set!"
+    except Exception as e:
+        print(e)
+        return "Location save failed, if you want to update your location please use !update_location"
+
+
+# update user's location in postgresql
+async def update_location(user_id: int, city_name: str, lat: int, lon: int, hidden: bool):
+    try:
+        conn = await connect_to_db()
+        await conn.fetch(
+            "UPDATE user_locations SET city_name = $2, lat = $3, lon = $4, hidden = $5  WHERE user_id = $1", user_id,
+            city_name, lat, lon, hidden)
+        await conn.close()
+        return "Updated location!"
+    except Exception as e:
+        print(e)
+        return "An error has occurred, please try again!"
+
+
+# get user_id's location from postgresql
+async def get_location(user_id: int):
+    try:
+        conn = await connect_to_db()
+        location = await conn.fetch("SELECT * FROM user_locations WHERE user_id = $1", user_id)
+        print(location)
+        return location
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        print(e)
+        return False
 
 
 #########################################################
 ############### SPOTIFY TOKEN MANAGMENT #################
 #########################################################
 
-def checkTokenAge(token_time: float):
-    # print(abs(token_time - t.time()))
-    if abs(token_time - t.time()) < 3540:
-        return True
-    else:
-        return False
-
-
-def fetchToken(channel_name: str, ctx_channel):
-    try:
-        return spotifyTokens.find({'name': f'{channel_name}'})
-    except Exception as e:
-        # print(e)
-        return bot.send_message("Error has occurred", ctx_channel)
-
-
-def updateToken(channel_name, refresh_token, ctx_channel):
-    try:
-        # spotifyTokens.find_one_and_update()
-        # print(channel_name, refresh_token)
-        spotifyTokens.update_one({'name': f'{channel_name}'},
-                                 {'$set': {'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'}}, upsert=True)
-    except Exception as e:
-        # print(e)
-        return bot.send_message("An error has occurred, please try again!", ctx_channel)
-
-
-def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
-    if checkIfAlreadyInserted(channel_name):
-        return False
-    try:
-        spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'getToken': f'{get_token}',
-                              'time': f'{t.time()}'})
-        return True
-    except Exception as e:
-        # print(e)
-        return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
-
-
-def checkIfAlreadyInserted(channel_name):
-    try:
-        if chatUsers.find_one({"username": channel_name}) is not None:
-            return True
-        else:
-            return False
-    except Exception as e:
-        # print(e)
-        return
-
-
-def checkSpotifyRefreshToken(channel_name):
-    try:
-        x = spotifyTokens.find({'name': f'{channel_name}'})
-        if x[0]['name'] is not None:
-            # print(x[0]['refreshToken'])
-            return f"@{channel_name}" + " You have a key in the database."
-    except Exception as e:
-        # print(e)
-        return f"@{channel_name}" + " You do not have a key in the database."
+# def checkTokenAge(token_time: float):
+#     # print(abs(token_time - t.time()))
+#     if abs(token_time - t.time()) < 3540:
+#         return True
+#     else:
+#         return False
+#
+#
+# def fetchToken(channel_name: str, ctx_channel):
+#     try:
+#         return spotifyTokens.find({'name': f'{channel_name}'})
+#     except Exception as e:
+#         print(e)
+#         return bot.send_message("Error has occurred", ctx_channel)
+#
+#
+# def updateToken(channel_name, refresh_token, ctx_channel):
+#     try:
+#         # spotifyTokens.find_one_and_update()
+#         # print(channel_name, refresh_token)
+#         spotifyTokens.update_one({'name': f'{channel_name}'},
+#                                  {'$set': {'refreshToken': f'{refresh_token}', 'time': f'{t.time()}'}}, upsert=True)
+#     except Exception as e:
+#         print(e)
+#         return bot.send_message("An error has occurred, please try again!", ctx_channel)
+#
+#
+# def insetSpotifyRefreshToken(channel_name, refresh_token, get_token):
+#     if checkIfAlreadyInserted(channel_name):
+#         return False
+#     try:
+#         spotifyTokens.insert({'name': f'{channel_name}', 'refreshToken': f'{refresh_token}', 'getToken': f'{get_token}',
+#                               'time': f'{t.time()}'})
+#         return True
+#     except Exception as e:
+#         print(e)
+#         return "An error has occurred. Use !checkKey to verify if you already have a key in the database, or try again!"
+#
+#
+# def checkIfAlreadyInserted(channel_name):
+#     try:
+#         if chatUsers.find_one({"username": channel_name}) is not None:
+#             return True
+#         else:
+#             return False
+#     except Exception as e:
+#         print(e)
+#         return
+#
+#
+# def checkSpotifyRefreshToken(channel_name):
+#     try:
+#         x = spotifyTokens.find({'name': f'{channel_name}'})
+#         if x[0]['name'] is not None:
+#             # print(x[0]['refreshToken'])
+#             return f"@{channel_name}" + " You have a key in the database."
+#     except Exception as e:
+#         print(e)
+#         return f"@{channel_name}" + " You do not have a key in the database."
 
 
 #####################################################################
 ################### POKEMON & BATTLES MANAGMENT #####################
 #####################################################################
-def getEscapePhrase():
-    msg = ""
-    mon = botExampleMons.aggregate(
-        [{"$sample": {"size": 1}}]
-    )
-    for thing in mon:
-        msg = thing['pokemon']
-    phase: str = f'{msg} just: dodged your pokeball, laughed at you and hopped away happily'
-    return phase
 
-def insertCaughtPokemon(pokemon_name, username):
-    pokemon_name = pokemon_name.capitalize()
+# insert pokemon into postgresql
+# use prepared statement
+# use connect_to_db()
+async def insertCaughtPokemon(pokemon_id: int, pokemon_name: str, user_id: int, username: str):
     try:
-        user = chatUsers.find_one({'username': username})
-        if user is not None:
-            chatUsers.update_one({'username': username},
-                                 {'$addToSet': {'caughtPokemon': {'name': f'{pokemon_name}'}}})
-        return "Caught successfully"
+        conn = await connect_to_db()
+        await conn.fetch("INSERT INTO pokemon (id, user_id, pokemon_name, username) VALUES ($1, $2, $3, $4)",
+                         pokemon_id, user_id, pokemon_name, username)
+        await conn.close()
+        return True
     except Exception as e:
-        # print(e)
-        return "Error occurred"
+        print(e)
+        return False
 
 
-def getPokedex(username):
-    mons = ""
+# get random pokemon from example_mons in postgresql
+async def getEscapePhrase():
     try:
-        if chatUsers.find_one({'username': username}) is not None:
-            caught_pokemon = chatUsers.find_one({'username': username})['caughtPokemon']
-            # print(len(caught_pokemon))
-            # print("lenght ^^^")
-            # if len(caught_pokemon) == 0:
-            #     return "You have not yet caught a mon, use !mon to catch one!"
-            # for pokemon in caught_pokemon:
-            #     mons += pokemon
-            return caught_pokemon
-    except TypeError as e:
-        # print("ERROR")
-        # print(e)
-        return "Are you sure you have caught any mons? Try to catch one with !mon and look at your pokedex again."
-    except KeyError as e:
-        # print(e)
-        return "It seems that you have not caught any pokemon! Try to catch one with !mons"
+        conn = await connect_to_db()
+        pokemon = await conn.fetchval("SELECT * FROM example_mons ORDER BY RANDOM() LIMIT 1")
+        await conn.close()
+        return f"{pokemon} just: dodged your pokeball, laughed at you and hopped away happily"
+    except Exception as e:
+        print(e)
+        return "An error has occurred, please try again!"
+
+
+# get all caught pokemon for user_id from postgresql
+async def getPokedex(username: str):
+    try:
+        conn = await connect_to_db()
+        pokemon = await conn.fetch("SELECT * FROM pokemon JOIN users u on u.user_id = pokemon.user_id WHERE u.username "
+                                   "= $1 ", username)
+        await conn.close()
+        return pokemon
+    except Exception as e:
+        print(e)
+        return "An error has occurred, please try again!"
