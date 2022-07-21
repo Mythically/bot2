@@ -11,6 +11,7 @@ TODO*: Created: 21/07/2022, Updated: --
  - code cleanup & restructuring;
  - end-to-end encryption for collected data and authorizations;
  - automate remote restarts for updated code;
+ 
 *Higher on the list = higher priorty
 
 Development related-learning:
