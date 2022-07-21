@@ -20,13 +20,6 @@ from twitchio.ext import eventsub, commands, pubsub
 i = 0
 pokemonClient = pokepy.V2Client()
 # client_disk_cache = pokepy.V2Client(cache='in_disk', cache_location='/temp')
-said_hi = False
-users_oauth_token = "se4xwnmyhahz1us708e7z3zasp8j9y"
-users_channel_id = 50458406
-client = twitchio.Client(token=os.environ["TMI_TOKEN"])
-client.pubsub = pubsub.PubSubPool(client)
-topic = [pubsub.bits(users_oauth_token)[users_channel_id]]
-
 bot = commands.Bot(
     # set up the bot
     token=os.environ['TMI_TOKEN'],
