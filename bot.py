@@ -35,10 +35,6 @@ words = ''
 spell = SpellChecker(language='en')
 pokemonClient = pokepy.V2Client()
 # client_disk_cache = pokepy.V2Client(cache='in_disk', cache_location='/temp')
-said_hi = False
-my_token = os.environ["TMI_TOKEN"]
-users_oauth_token = "se4xwnmyhahz1us708e7z3zasp8j9y"
-users_channel_id = 50458406
 client = twitchio.Client(token=my_token)
 client.pubsub = pubsub.PubSubPool(client)
 topic = [pubsub.bits(users_oauth_token)[users_channel_id]]
