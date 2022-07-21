@@ -14,7 +14,7 @@ TODO*: Created: 21/07/2022, Updated: --
  
 *Higher on the list = higher priorty
 
-Development related-learning:
+Development-related learning:
  - Better understanding of asyncio and asyncpg
  - Tunneling
  - WebSockets
