@@ -7,10 +7,15 @@ name = "pypi"
 twitchio = "*"
 pokepy = "*"
 pymongo = "*"
-pyvjoy = "*"
 flask = "*"
 pylint = "*"
 emoji = "*"
+asyncpg = "*"
+black = "*"
+pokebase = "*"
+sphinx-rtd-theme = "*"
+openai = "*"
+pytz = "*"
 
 [dev-packages]
 

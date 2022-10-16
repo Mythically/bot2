@@ -4,3 +4,4 @@ ignore/
 .env
 ban.txt
 __pycache__
+docs
