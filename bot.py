@@ -19,15 +19,36 @@ import openai
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands
 
-import spotify_playing
+# import spotify_playing
 
 
 # from tqdm import tqdm
 
-# some vars
-
-
 # client_disk_cache = pokepy.V2Client(cache='in_disk', cache_location='/temp')
+
+
+def deg_to_cardinal(deg) -> str:
+    deg = int(deg)
+    dirs = [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
+    ]
+    ix = round(deg / (360.0 / len(dirs)))
+    return dirs[ix % len(dirs)]
 
 
 class Bot(commands.Bot):
@@ -707,7 +728,7 @@ class Bot(commands.Bot):
 
     @commands.command(name="mon")
     @commands.cooldown(rate=2, per=30, bucket=commands.Bucket.user)
-    async def pokemon(self, ctx) -> None:
+    async def pokemon(self, ctx: commands.Context) -> None:
         try:
             pokemon_id = randint(0, 1126)
             if pokemon_id > 903:
@@ -983,10 +1004,12 @@ class Bot(commands.Bot):
         await ctx.channel.send(str(number))
 
     @commands.command()
-    async def dia(self, ctx, *, msg=None) -> None:
+    async def dia(self, ctx: commands.Context, msg=None) -> None:
         if msg is None:
             await ctx.channel.send("Please send a message")
         # response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
+        print(ctx.channel)
+
         await ctx.channel.send(msg)
 
     @commands.command()
@@ -1136,7 +1159,7 @@ class Bot(commands.Bot):
 
         response = response.json()
         emoji_icon = self.emoji_choice(response['weather'][0]['description'])
-        wind_direction = self.deg_to_cardinal(response['wind']['deg'])
+        wind_direction = deg_to_cardinal(response['wind']['deg'])
         # convert sunrise and sunset to city's timezone
         try:
             weather = f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):" + \
@@ -1161,28 +1184,6 @@ class Bot(commands.Bot):
     # send the respective emoji depending on weather description
 
     # turn relative degrees to cardinal direction
-    def deg_to_cardinal(self, deg) -> str:
-        deg = int(deg)
-        dirs = [
-            "N",
-            "NNE",
-            "NE",
-            "ENE",
-            "E",
-            "ESE",
-            "SE",
-            "SSE",
-            "S",
-            "SSW",
-            "SW",
-            "WSW",
-            "W",
-            "WNW",
-            "NW",
-            "NNW",
-        ]
-        ix = round(deg / (360.0 / len(dirs)))
-        return dirs[ix % len(dirs)]
 
     # save the user's location to mongoDB database
     @commands.command(name="set_location", aliases=['sl'])
