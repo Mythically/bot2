@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
+
+import asyncpg
 import beckett.exceptions
 import botDB
 import datetime
@@ -15,6 +17,7 @@ from asyncio import sleep
 from random import randint
 
 import openai
+
 # from spellchecker import SpellChecker
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands
@@ -91,8 +94,12 @@ class Bot(commands.Bot):
         #     words = ''
         #
 
-        if self.is_trusted_user(msg.author.name) or msg.author.is_mod or msg.author.is_subscriber or \
-                msg.author.is_broadcaster:
+        if (
+                self.is_trusted_user(msg.author.name)
+                or msg.author.is_mod
+                or msg.author.is_subscriber
+                or msg.author.is_broadcaster
+        ):
             regex = (
                 r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()"
                 r"<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
@@ -419,7 +426,9 @@ class Bot(commands.Bot):
         pokemon_species_id = id[0].evolution_chain.url
         pokemon_evolution_id = pokemon_species_id.split("/")[-2]
         print(pokemon_evolution_id)
-        pokemon_evolution = [self.pokemonClient.get_evolution_chain(pokemon_evolution_id)]
+        pokemon_evolution = [
+            self.pokemonClient.get_evolution_chain(pokemon_evolution_id)
+        ]
         # print(str(pokemon_species_id) + " chain")
         # print(pokemon_evolution_id)
         # pokemon_trigger = pokemon_evolution[0].chain.evolves_to[0].evolution_details[0].trigger.name
@@ -642,8 +651,8 @@ class Bot(commands.Bot):
             "Yo what are you waiting for, go check out "
             + msg
             + " at www.twitch.tv/"
-            + msg +
-            "they were last playing"
+            + msg
+            + "they were last playing"
             + game
         )
 
@@ -743,10 +752,13 @@ class Bot(commands.Bot):
     async def pokedex(self, ctx, *, msg=None) -> None:
         if msg == "reset":
             await ctx.channel.send("Are you sure? (y/n)")
-            response = (await self.wait_for('message', predicate=lambda m: m.author == ctx.author))
-            print(response)
-            if response.content == "y" or response.content == "yes":
-                await botDB.resetPokedex(ctx.author.id)
+            response = await self.wait_for(
+                "message",
+                predicate=lambda m: m.author.name != self.nick
+                                    and m.author == ctx.author,
+            )
+            if response[0].content == "y" or response[0].content == "yes":
+                await botDB.remove_all_pokemon(int(ctx.author.id))
                 await ctx.channel.send("Pokedex reset!")
             else:
                 await ctx.channel.send("Pokedex not reset.")
@@ -932,8 +944,23 @@ class Bot(commands.Bot):
     async def checkSpotifyToken(self, ctx) -> None:
         await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
 
-    async def send_message(self, msg, channel):
-        await channel.send(msg)
+    @commands.command(name="sendmsg")
+    async def send_message(self, ctx, *, msg):
+        channel = await self.fetch_channels([425666219])
+        await self.join_channels([str(channel[0].user.name)])
+        channel = self.get_channel(str(channel[0].user.name))
+        await channel.send(msg.split(" ")[0] + "testing redemptions, leaving channel now")
+        # await self.part_channels([str(channel.name)])
+        # await channel[0].send(msg)
+
+    # get chatter colour
+    @commands.command(name="colour")
+    async def get_chatter_colour(self, ctx, *, msg):
+        user = await self.fetch_users(names=[f"{msg}"])
+        user_id = int(user[0].id)
+        channel = await self.fetch_chatters_colors([user_id])
+        color = str(channel[0].color)
+        await ctx.channel.send(color)
 
     @commands.command(name="sayfile")
     async def sayfile(self, ctx, *, msg) -> None:
@@ -1112,16 +1139,20 @@ class Bot(commands.Bot):
         if msg is None:
             if await botDB.is_location_set(int(ctx.author.id)):
                 coords = await botDB.get_location(int(ctx.author.id))
-                lat = coords[0]['lat']
-                lon = coords[0]['lon']
+                lat = coords[0]["lat"]
+                lon = coords[0]["lon"]
             else:
-                await ctx.channel.send("Please enter a city, or set your location with !set_location")
+                await ctx.channel.send(
+                    "Please enter a city, or set your location with !set_location"
+                )
                 return
         # check if list is empty
         if not coords:
             coords = self.get_city_coords(msg)
             if coords == "Could not find city":
-                await ctx.channel.send("Couldn't get city coordinates. Please check spelling and try again.")
+                await ctx.channel.send(
+                    "Couldn't get city coordinates. Please check spelling and try again."
+                )
                 return
             lat = coords[0]
             lon = coords[1]
@@ -1129,22 +1160,25 @@ class Bot(commands.Bot):
             print(lon)
         response = requests.get(
             f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid="
-            f"{os.environ['OPENWEATHERMAP_API_KEY']}&units=metric")
+            f"{os.environ['OPENWEATHERMAP_API_KEY']}&units=metric"
+        )
         if response.status_code == 404:
             await ctx.channel.send("City not found")
             return
 
         response = response.json()
-        emoji_icon = self.emoji_choice(response['weather'][0]['description'])
-        wind_direction = self.deg_to_cardinal(response['wind']['deg'])
+        emoji_icon = self.emoji_choice(response["weather"][0]["description"])
+        wind_direction = self.deg_to_cardinal(response["wind"]["deg"])
         # convert sunrise and sunset to city's timezone
         try:
-            weather = f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):" + \
-                      f" {response['weather'][0]['description']} {emoji_icon}, {response['main']['temp']}ºC ({round(response['main']['temp'] * 1.8 + 32, 2)} ºF), feels like " + \
-                      f"{response['main']['feels_like']}ºC, Cloud cover: {response['clouds']['all']}%,Wind: {wind_direction} " + \
-                      f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%," + \
-                      f" Pressure: {response['main']['pressure']}hPa, Sunrise: {self.unix_to_time(response['sys']['sunrise'], response['timezone'])}, " + \
-                      f" Sunset: {self.unix_to_time(response['sys']['sunset'], response['timezone'])}"
+            weather = (
+                    f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):"
+                    + f" {response['weather'][0]['description']} {emoji_icon}, {response['main']['temp']}ºC ({round(response['main']['temp'] * 1.8 + 32, 2)} ºF), feels like "
+                    + f"{response['main']['feels_like']}ºC, Cloud cover: {response['clouds']['all']}%,Wind: {wind_direction} "
+                    + f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%,"
+                    + f" Pressure: {response['main']['pressure']}hPa, Sunrise: {self.unix_to_time(response['sys']['sunrise'], response['timezone'])}, "
+                    + f" Sunset: {self.unix_to_time(response['sys']['sunset'], response['timezone'])}"
+            )
         except Exception as e:
             print(e)
             await ctx.channel.send("Error getting weather data")
@@ -1185,7 +1219,7 @@ class Bot(commands.Bot):
         return dirs[ix % len(dirs)]
 
     # save the user's location to mongoDB database
-    @commands.command(name="set_location", aliases=['sl'])
+    @commands.command(name="set_location", aliases=["sl"])
     async def set_location(self, ctx, *, msg=None) -> None:
         if msg is None:
             await ctx.channel.send(
@@ -1302,7 +1336,9 @@ class Bot(commands.Bot):
     # get berry from pokepy
     @commands.command(name="berry", aliases=["b"])
     async def berry(self, ctx: commands.Context, *, msg) -> None:
-        berry = requests.get(self.pokemonClient.get_berry(msg).item.url).json()["effect_entries"]
+        berry = requests.get(self.pokemonClient.get_berry(msg).item.url).json()[
+            "effect_entries"
+        ]
         for key in range(0, len(berry)):
             if berry[key]["language"]["name"] == "en":
                 await ctx.channel.send(berry[key]["short_effect"])
@@ -1328,7 +1364,7 @@ class Bot(commands.Bot):
                 max_tokens=500,
                 frequency_penalty=0,
                 presence_penalty=0,
-                stop=["\n", " Human:", " AI:"]
+                stop=["\n", " Human:", " AI:"],
             )
             await ctx.channel.send(response["choices"][0]["text"])
         except asyncio.exceptions.TimeoutError as t:
@@ -1342,13 +1378,15 @@ class Bot(commands.Bot):
         if not self.trusted_users:
             self.trusted_users = botDB.get_trusted_users()
         for user in self.trusted_users:
-            if username == user['username']:
+            if username == user["username"]:
                 return True
         return False
 
-    async def event_command_error(self, ctx: commands.Context, error: Exception) -> None:
+    async def event_command_error(
+            self, ctx: commands.Context, error: Exception
+    ) -> None:
         if isinstance(error, commands.CommandOnCooldown):
-            time = str(error).split(".", 1)[1].replace("(", '').replace(')', '')
+            time = str(error).split(".", 1)[1].replace("(", "").replace(")", "")
             await ctx.send("Command is on CD, " + time)
 
     # command to get a word definition from dictionaryapi
@@ -1358,23 +1396,22 @@ class Bot(commands.Bot):
             await ctx.channel.send("Please enter a word")
             return
         try:
-            response = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{msg}").json()
+            response = requests.get(
+                f"https://api.dictionaryapi.dev/api/v2/entries/en/{msg}"
+            ).json()
             if response is None:
                 await ctx.channel.send("Word not found")
                 return
-            await ctx.channel.send(response[0]["meanings"][0]["definitions"][0]["definition"] + "; EXAMPLE: " +
-                                   response[0]["meanings"][0]["definitions"][0]["example"])
+            await ctx.channel.send(
+                response[0]["meanings"][0]["definitions"][0]["definition"]
+                + "; EXAMPLE: "
+                + response[0]["meanings"][0]["definitions"][0]["example"]
+            )
         except Exception as e:
             print(e)
             await ctx.channel.send("An error has occurred!")
 
     # command to trade pokemon between two users
-    @commands.command(name="trade", aliases=["t"])
-    async def trade(self, ctx: commands.Context) -> None:
-        await ctx.channel.send("Who do you wish to trade with?")
-        response = await self.wait_for('message', predicate=lambda m: m.author == ctx.author, timeout=60)
-        print(response)
-
     # # command to fetch channel
     #     @commands.command(name="channel", aliases=["c"])
     #     async def channel(self, ctx: commands.Context, *, msg):
@@ -1396,7 +1433,9 @@ class Bot(commands.Bot):
         #     print("error")
         #     print(e)
         # get all chatters in channel
-        chatters = requests.get(f"https://tmi.twitch.tv/group/user/{ctx.channel.name}/chatters").json()["chatters"]
+        chatters = requests.get(
+            f"https://tmi.twitch.tv/group/user/{ctx.channel.name}/chatters"
+        ).json()["chatters"]
         print(chatters)
         chatters2 = ctx.channel.chatters
         print(chatters2)
@@ -1408,41 +1447,76 @@ class Bot(commands.Bot):
 
     async def release(self, ctx: commands.Context):
         await ctx.channel.send("Who do you wish to release?")
-        response = await self.wait_for('message', predicate=lambda m: m.author == ctx.author, timeout=60)
+        response = await self.wait_for(
+            "message", predicate=lambda m: m.author == ctx.author, timeout=60
+        )
         print(response[0].content)
 
+    # TODO: check if user has pokemon
+    # TODO: check only for plausible answers
     # command to trade pokemon between 2 users
     @commands.command(name="trade", aliases=["t"])
     async def trade(self, ctx: commands.Context, *, msg=None):
         name1 = ctx.author.name
         id1 = ctx.author.id
         await ctx.channel.send("Who do you wish to trade with?")
-        name2 = await self.wait_for('message', predicate=lambda m: ctx.author.name != self.nick and m.author == ctx.author, timeout=60)
+        name2 = await self.wait_for(
+            "message",
+            predicate=lambda m: ctx.author.name != self.nick and m.author == ctx.author,
+            timeout=60,
+        )
         name2 = name2[0].content
         await ctx.channel.send(f"@{name2}, would u like to trade with {name1}?")
-        answer = await self.wait_for('message', predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2)
+        answer = await self.wait_for(
+            "message",
+            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2,
+        )
         id2 = answer[0].author.id
         if answer[0].content == "no":
             await ctx.channel.send(f"{name2} did not agree to trade. Trade cancelled")
             return
         await ctx.channel.send(f"@{name1}, which pokemon would you like to trade?")
-        mon1 = await self.wait_for('message', predicate=lambda m: ctx.author.name != self.nick and m.author.name == name1, timeout=60)
+        mon1 = await self.wait_for(
+            "message",
+            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name1,
+            timeout=60,
+        )
         mon1 = mon1[0].content
         await ctx.channel.send(f"@{name2}, which pokemon would you like to trade?")
-        mon2 = await self.wait_for('message', predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2, timeout=60)
+        mon2 = await self.wait_for(
+            "message",
+            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2,
+            timeout=60,
+        )
         mon2 = mon2[0].content
         names = [name1, name2]
-        await ctx.channel.send(f"Do you both agree to trade {name1}'s {mon1} for {name2}'s {mon2}? (yes/no)")
+        await ctx.channel.send(
+            f"Do you both agree to trade {name1}'s {mon1} for {name2}'s {mon2}? (yes/no)"
+        )
         for name in names[:]:
-            agreement = await self.wait_for('message', predicate=lambda m: ctx.author.name != self.nick and m.author.name in names, timeout=60)
+            agreement = await self.wait_for(
+                "message",
+                predicate=lambda m: ctx.author.name != self.nick
+                                    and m.author.name in names,
+                timeout=60,
+            )
             if agreement[0].content in ("yes", "y"):
                 names.remove(agreement[0].author.name)
         if names:
-            await ctx.channel.send("One of you did not agree, or prompt timed out (30s), trade cancelled")
+            await ctx.channel.send(
+                "One of you did not agree, or prompt timed out (30s), trade cancelled"
+            )
             return
         id1 = int(id1)
         id2 = int(id2)
-        if await botDB.exchange_pokemon(user_id=id1, pokemon_name=mon1, user_id2=id2, pokemon_name2=mon2, username=name1, username2=name2):
+        if await botDB.exchange_pokemon(
+                user_id=id1,
+                pokemon_name=mon1,
+                user_id2=id2,
+                pokemon_name2=mon2,
+                username=name1,
+                username2=name2,
+        ):
             await ctx.channel.send("Trade successful!")
             return
         else:
@@ -1452,13 +1526,14 @@ class Bot(commands.Bot):
 
 # bot.py
 if __name__ == "__main__":
-    # bot.pool = bot.loop.run_until_complete (
-    #     asyncpg.create_pool (
-    #     host=os.environ['DB_HOST'],
-    #     port=os.environ['DB_PORT'],
-    #     user=os.environ['DB_USER'],
-    #     password=os.environ['DB_PASSWORD'],
-    #     database=os.environ['DB_NAME']
-    # ))
     bot = Bot()
+
+    # bot.pool = bot.loop.run_until_complete(
+    #     asyncpg.create_pool(
+    #         host=os.environ['DB_HOST'],
+    #         port=os.environ['DB_PORT'],
+    #         user=os.environ['DB_USER'],
+    #         password=os.environ['DB_PASSWORD'],
+    #         database=os.environ['DB_NAME']
+    #     ))
     bot.run()

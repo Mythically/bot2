@@ -5,9 +5,6 @@ import os
 import traceback
 
 import asyncpg
-from twitchio.ext import commands
-
-import bot
 
 
 # import asyncio
@@ -56,6 +53,21 @@ async def connect_to_db():
 #########################################################
 ################### USERS MANAGMENT #####################
 #########################################################
+
+# get user_id for username using pool connection
+# class MyCog(commands.Cog):
+#     def __init__(self, bot: commands.Bot):
+#         self.bot = bot
+#
+#     async def get_user_id(self, username: str) -> int:
+#         try:
+#             async with bot.pool.acquire() as conn:
+#                 return await conn.fetch(
+#                     "SELECT user_id FROM users WHERE username = $1", username
+#                 )
+#         except Exception as e:
+#             print(e)
+
 
 # if username not in database, add it in users postgresql
 async def newUser(username: str, user_id: int) -> bool:
@@ -332,17 +344,17 @@ async def getPokedex(username: str) -> str:
 
 
 # reset pokedex for user_id in postgresql
-async def resetPokedex(username: str) -> str:
-    try:
-        conn = await connect_to_db()
-        await conn.fetch(
-            "DELETE FROM pokemon WHERE user_id = (SELECT user_id FROM users WHERE username = $1)",
-            username,
-        )
-        await conn.close()
-    except Exception as e:
-        print(e)
-        return "An error has occurred, please try again!"
+# async def resetPokedex(username: str) -> str:
+#     try:
+#         conn = await connect_to_db()
+#         await conn.fetch(
+#             "DELETE FROM pokemon WHERE user_id = (SELECT user_id FROM users WHERE username = $1)",
+#             username,
+#         )
+#         await conn.close()
+#     except Exception as e:
+#         print(e)
+#         return "An error has occurred, please try again!"
 
 
 # check if user has caught this pokemon
@@ -356,8 +368,9 @@ async def has_caught(user_id: int, mon: str) -> str:
         print(e)
 
 
-#exchange pokemon between two users (user_id and user_id2) (pokemon_name and pokemon_name2) (username and username2)
-async def exchange_pokemon(user_id: int, user_id2: int, pokemon_name: str, pokemon_name2: str, username: str, username2: str) -> bool:
+# exchange pokemon between two users (user_id and user_id2) (pokemon_name and pokemon_name2) (username and username2)
+async def exchange_pokemon(user_id: int, user_id2: int, pokemon_name: str, pokemon_name2: str, username: str,
+                           username2: str) -> bool:
     try:
         conn = await connect_to_db()
         await conn.fetch(
@@ -373,6 +386,21 @@ async def exchange_pokemon(user_id: int, user_id2: int, pokemon_name: str, pokem
             username2,
             user_id,
             pokemon_name,
+        )
+        await conn.close()
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+# remove all pokemon from user_id
+async def remove_all_pokemon(user_id: int) -> bool:
+    try:
+        conn = await connect_to_db()
+        await conn.fetch(
+            "DELETE FROM pokemon WHERE user_id = $1",
+            user_id,
         )
         await conn.close()
         return True
