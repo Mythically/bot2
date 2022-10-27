@@ -954,6 +954,7 @@ class Bot(commands.Bot):
         # await channel[0].send(msg)
 
     # get chatter colour
+# TODO: check if user is in chat, scrape, otherwise resort to API calls
     @commands.command(name="colour")
     async def get_chatter_colour(self, ctx, *, msg):
         user = await self.fetch_users(names=[f"{msg}"])
