@@ -14,7 +14,6 @@ import pokepy
 import re
 import requests
 import signal
-# import openai
 import subprocess as sp
 from datetime import datetime
 from asyncio import sleep
@@ -949,32 +948,6 @@ class Bot(commands.Bot):
             #     await ctx.channel.send(key.short_effect)
             #     return
 
-    # command that sends message as request to openai api
-    # @commands.command(name="ai", aliases=["openai"])
-    # async def ai(self, ctx: commands.Context, *, msg) -> None:
-    #     if not self.is_trusted_user(ctx.author.name):
-    #         await ctx.channel.send("You are not allowed to use this command!")
-    #         return
-    #     if msg is None:
-    #         await ctx.channel.send("Please enter a message")
-    #         return
-    #     try:
-    #         response = openai.Completion.create(
-    #             prompt=msg,
-    #             engine="text-davinci-002",
-    #             temperature=1,
-    #             max_tokens=500,
-    #             frequency_penalty=0,
-    #             presence_penalty=0,
-    #             stop=["\n", " Human:", " AI:"],
-    #         )
-    #         await ctx.channel.send(response["choices"][0]["text"])
-    #     except asyncio.exceptions.TimeoutError as t:
-    #         print(t)
-    #         await ctx.channel.send("OpenAI API timed out")
-    #     except Exception as e:
-    #         print(e)
-    #         await ctx.channel.send("An error has occurred!")
 
     def is_trusted_user(self, username) -> bool:
         if not self.trusted_users:
