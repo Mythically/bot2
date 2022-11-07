@@ -7,7 +7,7 @@ name = "pypi"
 twitchio = "*"
 pokepy = "*"
 pymongo = "*"
-flask = "*"
+flask = { extras = ["async"], version = "*" }
 pylint = "*"
 emoji = "*"
 asyncpg = "*"
@@ -16,6 +16,7 @@ pokebase = "*"
 sphinx-rtd-theme = "*"
 openai = "*"
 pytz = "*"
+sphinx = "*"
 
 [dev-packages]
 

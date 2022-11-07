@@ -93,7 +93,7 @@ async def newUser(username: str, user_id: int) -> bool:
 async def get_user(username: str):
     try:
         conn = await connect_to_db()
-        user = conn.fetch(f"SELECT * FROM users WHERE username={username}")
+        user = await conn.fetch(f'SELECT * FROM users WHERE username=$1', username)
         return user
     except Exception as e:
         print(e)

@@ -1,10 +1,14 @@
 import pokepy
+import requests
+
 from twitchio.ext import commands
 
 
-class MyCog(commands.Cog):
+class pokemon_cog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
 
     async def event_ready(self):
         print(f"{self.bot.nick} is online!")
@@ -357,22 +361,22 @@ class MyCog(commands.Cog):
             " $effect_chance", " " + effect_chance
         )
         if (
-            len(
-                type.capitalize()
-                + "; "
-                + damage_class.capitalize()
-                + " Power: "
-                + power
-                + " Accuracy: "
-                + accuracy
-                + " PP: "
-                + pp
-                + " Priority: "
-                + priority
-                + "  "
-                + effect_entries
-            )
-            >= 500
+                len(
+                    type.capitalize()
+                    + "; "
+                    + damage_class.capitalize()
+                    + " Power: "
+                    + power
+                    + " Accuracy: "
+                    + accuracy
+                    + " PP: "
+                    + pp
+                    + " Priority: "
+                    + priority
+                    + "  "
+                    + effect_entries
+                )
+                >= 500
         ):
             await ctx.channel.send(
                 type.capitalize()
@@ -418,4 +422,4 @@ class MyCog(commands.Cog):
 
 def prepare(bot: commands.Bot):
     # Load our cog with this module...
-    bot.add_cog(MyCog(bot))
+    bot.add_cog(pokemon_cog(bot))

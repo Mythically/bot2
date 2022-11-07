@@ -2,7 +2,7 @@
 import asyncio
 import time
 from pprint import pprint
-
+import pokepy
 import asyncpg
 import beckett.exceptions
 import botDB
@@ -10,7 +10,6 @@ import datetime
 import emoji
 import math
 import os
-import pokepy
 import re
 import requests
 import signal
@@ -18,11 +17,13 @@ import subprocess as sp
 from datetime import datetime
 from asyncio import sleep
 from random import randint
+
 # from spellchecker import SpellChecker
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands, routines
 
-import spotify_playing
+# import spotify_playing
+from cogs import pokedex
 
 
 # from tqdm import tqdm
@@ -44,18 +45,18 @@ class Bot(commands.Bot):
         )
 
     i = 0
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    pokemonClient = pokepy.V2Client()
+    pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
     trusted_users = []
-    cogs = ["cogs.pokemon"]
+    initial_extensions = ["cogs.pokemon", "cogs.pokedex"]
 
     async def event_ready(self) -> None:
-        print(f"Logged into {bot.connected_channels} | {bot.nick}")
+        print(f"Logged into {self.connected_channels} | {self.nick}")
         self.trusted_users = await botDB.get_trusted_users()
-        print(self.trusted_users)
-        for channel in bot.connected_channels:
+        for channel in self.connected_channels:
+            print(channel)
             await channel.send("I am online!")
-        for cog in cogs:
+        for cog in self.initial_extensions:
+            print(cog)
             self.load_module(cog)
 
     async def event_message(self, msg) -> None:
@@ -129,14 +130,6 @@ class Bot(commands.Bot):
             #     await msg.channel.send(
             #         f"Detected pokemon: {pokemon_name}, #{pokemon_id}"
             #     )
-            for word in author:
-                if "stream" in word:
-                    for word in words2:
-                        if "hoss" in word and word != "frathoss":
-                            await msg.channel.send(f"/ban {word}")
-                            await msg.channel.send(
-                                "Another hoss bites the dust PogChamp"
-                            )
             if (
                     "buy" in msg.content
                     and "followers" in msg.content
@@ -146,65 +139,16 @@ class Bot(commands.Bot):
                 await msg.channel.send(f"/ban {name}")
         await self.handle_commands(msg)
 
-    # @commands.command(name="user")
-    # async def users(msg):
-    #     response = requests.get("https://api.twitch.tv/helix/users?login=zack_ko")
-    #     fetch = response.json()
-    #     print(fetch)
-    #
-    #
-    # @client.event()
-    # async def event_raw_usernotice(channel: Channel, tags: dict):
-    #     print("Channel " + str(channel) + " tags " + str(tags))
-    #     listing = tags.items()
-    #     stringify = ""
-    #     for item in range(len(listing)):
-    #         stringify += item
-    #
-    #     print("TAGS: " + stringify)
-    #     if "first-msg" in tags:
-    #         await channel.send("First message")
-    #
-
-    # @client.event()
-    # async def event_pubsub_bits(event):
-    #     print("bits redemption" + str(event))
-    #     chan = client.get_channel(current_channel)
-    #     await chan.send("Cheer!")
-
-    # @commands.command(name="reason")
-    # async def reason(ctx, *, msg):
-    #     await ctx.channel.send(spell_correction(msg))
-    #
-
     @commands.command(name="test")
     async def test(self, msg) -> None:
         print("test")
         await msg.channel.send("test passed!")
-
-
 
     @commands.command(name="vanish")
     async def time_outed(self, msg) -> None:
         if msg.author.name != bot.nick:
             print(f"/timeout {msg.author.name}")
             await msg.channel.send(f"/timeout {msg.author.name} 1s")
-
-    # @commands.command(name='resets')
-    # async def resets(msg):
-    #     await msg.channel.send('0 resets baby, THIS IS THE RUN LETSGO !!!!')
-
-    @commands.command(name="kill")
-    async def kill(self, msg) -> None:
-        print(msg.channel.name)
-
-        if (
-                msg.author.is_broadcaster
-                or msg.author.name == "themythh"
-                or msg.author.is_mod
-        ):
-            await msg.channel.send("Bye! :)")
-            await bot.close()
 
     @commands.command(name="timer")
     async def timer(self, ctx, *, msg) -> None:
@@ -219,7 +163,7 @@ class Bot(commands.Bot):
             secs = str(int(msg) % 60) + "s"
             hours = mins / 60
             hours = str(math.floor(hours)) + "h"
-            mins = mins % 60
+            mins %= 60
             mins = str(round(mins)) + "m"
             if mins == "0m":
                 mins = ""
@@ -232,10 +176,6 @@ class Bot(commands.Bot):
             await ctx.channel.send(
                 "Timer of " + hours + mins + secs + ", just ran out!"
             )
-
-    @commands.command(name="ryan")
-    async def ryan(self, msg) -> None:
-        await msg.channel.send("FeelsAmazingMan oiler")
 
     @commands.command(name="lag")
     async def lag(self, msg) -> None:
@@ -253,7 +193,6 @@ class Bot(commands.Bot):
             + " at www.twitch.tv/"
             + msg
             + "they were last playing"
-            + game
         )
 
     @commands.command(name="dance")
@@ -289,18 +228,6 @@ class Bot(commands.Bot):
     async def saveskygod(self, msg) -> None:
         await msg.channel.send("/unban RollingSkyGod")
 
-    # @commands.command(name="reset", aliases=["t"])
-    # async def reset(ctx, *, msg):
-    #     if reset in msg:
-    #         await bot.close()
-    #         await bot.join_channels([ctx.channel.name])
-
-    # @commands.command(name='brain')
-    # async def brian(msg):
-    #     while True:
-    #         await sleep(0.5)
-    #         await msg.channel.send('/me  O-oooooooooo AAAAE-A-A-I-A-U- JO-oooooooooooo AAE-O-A-A-U-U-A- E-eee-ee-eee AAAAE-A-E-I-E-A-JO-ooo-oo-oo-oo EEEEO-A-AAA-AAAA ')
-
     @commands.command(name="join")
     async def join(self, ctx, *, msg) -> None:
         channel_name = [msg]
@@ -313,94 +240,6 @@ class Bot(commands.Bot):
     async def leave(self, ctx: commands.Context):
         await ctx.channel.send("Leaving channel, bye!")
         await self.part_channels([ctx.channel.name])
-
-    @commands.command(name="mon")
-    @commands.cooldown(rate=2, per=30, bucket=commands.Bucket.user)
-    async def pokemon(self, ctx) -> None:
-        try:
-            pokemon_id = randint(0, 1126)
-            if pokemon_id > 903:
-                await ctx.channel.send(await botDB.getEscapePhrase())
-                return
-            pokemon = self.pokemonClient.get_pokemon(pokemon_id)
-            pokemon_name = pokemon.forms[0].name
-            if "tapu" in pokemon_name:
-                link_pokemon_name = pokemon_name
-            else:
-                link_pokemon_name = pokemon_name.split("-")
-            link_pokemon_name = (
-                str(link_pokemon_name[0]).strip("[").strip("]").strip("'")
-            )
-            link = f"https://pokemondb.net/pokedex/{link_pokemon_name}"
-            await botDB.insertCaughtPokemon(
-                int(pokemon_id), pokemon_name, int(ctx.author.id), ctx.author.name
-            )
-            await ctx.channel.send(
-                "@"
-                + str(ctx.author.name)
-                + " you've caught a "
-                + str(pokemon_name.capitalize())
-                + "! "
-                + link
-                + " Gotta catch 'em all!"
-            )
-        except beckett.exceptions.InvalidStatusCodeError as e:
-            print(e)
-            await ctx.channel.send(str(await botDB.getEscapePhrase()))
-
-    @commands.command(name="pokedex")
-    async def pokedex(self, ctx, *, msg=None) -> None:
-        if msg == "reset":
-            await ctx.channel.send("Are you sure? (y/n)")
-            response = await self.wait_for(
-                "message",
-                predicate=lambda m: m.author.name != self.nick
-                                    and m.author == ctx.author,
-            )
-            if response[0].content == "y" or response[0].content == "yes":
-                await botDB.remove_all_pokemon(int(ctx.author.id))
-                await ctx.channel.send("Pokedex reset!")
-            else:
-                await ctx.channel.send("Pokedex not reset.")
-            return
-        elif msg == "release":
-            await self.release(ctx)
-            return
-        if msg == "deviation":
-            mons = await botDB.getPokedex(ctx.author.name)
-            spread = {}
-            total = 0
-            check = 0
-            for mon in mons:
-                first_letter = mon["pokemon_name"][0]
-                try:
-                    spread[f"{first_letter}"] += 1
-                    continue
-                except KeyError:
-                    spread[f"{first_letter}"] = 0
-                spread[f"{first_letter}"] += 1
-            for key in spread:
-                total += spread[f"{key}"]
-            for key in spread:
-                spread[f"{key}"] = str(round((spread[f"{key}"] / total) * 100, 2)) + "%"
-            await ctx.channel.send(spread)
-            return
-        pokemons = ""
-        if msg is None:
-            msg = ctx.author.name
-        mons = await botDB.getPokedex(msg.lower())
-        if len(mons) == 0:
-            await ctx.channel.send("No pokemon found, use !mon to catch one!")
-            return
-        for mon in mons:
-            if len(pokemons + mon["pokemon_name"] + ", ") < 500:
-                pokemons += mon["pokemon_name"] + ", "
-            if len(pokemons + mon["pokemon_name"] + ", ") > 500:
-                await ctx.channel.send(pokemons)
-                pokemons = ""
-                await sleep(1)
-
-        await ctx.channel.send(pokemons)
 
     @commands.command(name="ban")
     async def ban(self, msg) -> None:
@@ -545,13 +384,10 @@ class Bot(commands.Bot):
         await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
 
     @commands.command(name="sendmsg")
-    async def send_message(self, ctx, *, msg):
-        channel = await self.fetch_channels([425666219])
-        await self.join_channels([str(channel[0].user.name)])
-        channel = self.get_channel(str(channel[0].user.name))
-        await channel.send(msg.split(" ")[0] + "testing redemptions, leaving channel now")
-        # await self.part_channels([str(channel.name)])
-        # await channel[0].send(msg)
+    async def send_message(self):
+        for channel in self.connected_channels:
+            if channel.name == "ws_zoomers":
+                await channel.send("!f")
 
     # get chatter colour
 # TODO: check if user is in chat, scrape, otherwise resort to API calls
@@ -889,22 +725,6 @@ class Bot(commands.Bot):
         else:
             return emoji.emojize(":sunny:", language="alias")
 
-    @commands.command(name="restart")
-    async def restart(self, ctx) -> None:
-        if ctx.author.id == os.environ["BOT_OWNER_ID"]:
-            await ctx.channel.send("Restarting...")
-            sp.call("start /wait pipenv run python bot.py", shell=True)
-            pid = os.getpid()
-            os.kill(pid, signal.SIGINT)
-
-        # os.execv(sys.executable, ['pipenv'] + sys.argv)
-        else:
-            await ctx.channel.send("Cheeky, but no :)")
-
-        # cmd_test.restart(os.getpid())
-        # await asyncio.sleep(5)
-        # ctx.channel.send("We back!")
-
     # fill message with string
     @commands.command()
     async def fill(self, ctx, *, msg) -> None:
@@ -944,18 +764,17 @@ class Bot(commands.Bot):
             if berry[key]["language"]["name"] == "en":
                 await ctx.channel.send(berry[key]["short_effect"])
                 return
-            # if key.language.name == "en":
-            #     await ctx.channel.send(key.short_effect)
-            #     return
 
+    # def is_trusted_user(self, username) -> bool:
+    #     if not self.trusted_users:
+    #         self.trusted_users = botDB.get_trusted_users()
+    #     for user in self.trusted_users:
+    #         if username == user["username"]:
+    #             return True
+    #     return False
 
-    def is_trusted_user(self, username) -> bool:
-        if not self.trusted_users:
-            self.trusted_users = botDB.get_trusted_users()
-        for user in self.trusted_users:
-            if username == user["username"]:
-                return True
-        return False
+    def is_trusted_user(self, username=None) -> bool:
+        return True
 
     async def event_command_error(
             self, ctx: commands.Context, error: Exception
@@ -979,12 +798,7 @@ class Bot(commands.Bot):
                 return
             print(type(response))
             pprint(response)
-            await ctx.channel.send(
-                response[0]["meanings"][0]["definitions"][0]["definition"]
-                + "; EXAMPLE: "
-                + response[0]["meanings"][0]["definitions"][0]["example"]
-            )
-        except Exception as e:
+            await ctx.channel.send(response[0]["meanings"][0]["definitions"][0]["definition"])except Exception as e:
             print(e)
             await ctx.channel.send("An error has occurred!")
 
@@ -1002,99 +816,54 @@ class Bot(commands.Bot):
                 print(chatter.name, chatter.color)
                 print(chatter2.name, chatter2.color)
 
-    async def release(self, ctx: commands.Context):
-        await ctx.channel.send("Who do you wish to release?")
-        response = await self.wait_for(
-            "message", predicate=lambda m: m.author == ctx.author, timeout=60
-        )
-        print(response[0].content)
-
-    # TODO: check if user has pokemon
-    # TODO: check only for plausible answers
-    # command to trade pokemon between 2 users
-    @commands.command(name="trade", aliases=["t"])
-    async def trade(self, ctx: commands.Context, *, msg=None):
-        name1 = ctx.author.name
-        id1 = ctx.author.id
-        await ctx.channel.send("Who do you wish to trade with?")
-        name2 = await self.wait_for(
-            "message",
-            predicate=lambda m: ctx.author.name != self.nick and m.author == ctx.author,
-            timeout=60,
-        )
-        name2 = name2[0].content
-        await ctx.channel.send(f"@{name2}, would u like to trade with {name1}?")
-        answer = await self.wait_for(
-            "message",
-            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2,
-        )
-        id2 = answer[0].author.id
-        if answer[0].content == "no":
-            await ctx.channel.send(f"{name2} did not agree to trade. Trade cancelled")
-            return
-        await ctx.channel.send(f"@{name1}, which pokemon would you like to trade?")
-        mon1 = await self.wait_for(
-            "message",
-            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name1,
-            timeout=60,
-        )
-        mon1 = mon1[0].content
-        await ctx.channel.send(f"@{name2}, which pokemon would you like to trade?")
-        mon2 = await self.wait_for(
-            "message",
-            predicate=lambda m: ctx.author.name != self.nick and m.author.name == name2,
-            timeout=60,
-        )
-        mon2 = mon2[0].content
-        names = [name1, name2]
-        await ctx.channel.send(
-            f"Do you both agree to trade {name1}'s {mon1} for {name2}'s {mon2}? (yes/no)"
-        )
-        for name in names[:]:
-            agreement = await self.wait_for(
-                "message",
-                predicate=lambda m: ctx.author.name != self.nick
-                                    and m.author.name in names,
-                timeout=60,
-            )
-            if agreement[0].content in ("yes", "y"):
-                names.remove(agreement[0].author.name)
-        if names:
-            await ctx.channel.send(
-                "One of you did not agree, or prompt timed out (30s), trade cancelled"
-            )
-            return
-        id1 = int(id1)
-        id2 = int(id2)
-        if await botDB.exchange_pokemon(
-                user_id=id1,
-                pokemon_name=mon1,
-                user_id2=id2,
-                pokemon_name2=mon2,
-                username=name1,
-                username2=name2,
-        ):
-            await ctx.channel.send("Trade successful!")
-            return
-        else:
-            await ctx.channel.send("Trade failed!")
-            return
-
     # send message to all channels the bot currently is in
-    # @routines.routine(seconds=10)
-    # async def broadcast(self):
-    #     for channel in self.connected_channels:
-    #         await channel.send("test")
-    #     users = await self.wait_for("message", timeout=10)
-    #     if len(users) > 0:
-    #         print(users[0].author.name)
+    # TODO: extract get pokemon, and add pokemon to db methods
+    # TODO: get mon in pre-routine hook, send message, in post-book update db
+    # TODO: send result message only in channels where people participated
+    @routines.routine(hours=2)
+    async def broadcast(self, ctx: commands.Context) -> None:
+        users = []
+        pokemon_id = randint(0, 1126)
+        pokemon = self.pokemonClient.get_pokemon(pokemon_id)
+        pokemon_name = pokemon.forms[0].name
+        for chan in self.connected_channels:
+            await chan.send(
+                f"A wild {pokemon_name} has appeared! Type \"catch\" for a chance to catch it! You have 20 seconds.")
+        try:
+            countdown = time.time()
+            print(countdown - time.time())
+            while (countdown - time.time()) < 20:
+                user = await self.wait_for("message", lambda m: not m.echo and m.content == "catch", timeout=20)
+                print(user[0].author.name)
+                print(user[0].content)
+                users += user
+        except asyncio.TimeoutError:
+            print("Timeout")
+            chosen = randint(0, len(users))
+            await ctx.channel.send(
+                f"{len(users)} trainers tried to catch the pokemon, @{users[chosen].author.name} caught it!"
+                " It will be sent to your pokedex, good job!")
+
+    # when was a user last seen.
+    @commands.command(aliases=["ls"])
+    async def last_seen(self, ctx: commands.Context, *, msg) -> None:
+        result = await botDB.get_user(msg)
+        result = str(result[0]['last_seen']).split(".")[0]
+        await ctx.channel.send(f"{msg} was last seen on {result}")
+
+    # when was a user first seen
+    @commands.command(aliases=["fs"])
+    async def first_seen(self, ctx: commands.Context, *, msg) -> None:
+        result = await botDB.get_user(msg)
+        result = str(result[0]['first_seen']).split(".")[0]
+        await ctx.channel.send(f"{msg} was first seen on {result}")
 
 
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
-
-    # bot.pool = bot.loop.run_until_complete(
+    #
+# bot.pool = bot.loop.run_until_complete(
     #     asyncpg.create_pool(
     #         host=os.environ['DB_HOST'],
     #         port=os.environ['DB_PORT'],
