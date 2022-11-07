@@ -17,7 +17,6 @@ import subprocess as sp
 from datetime import datetime
 from asyncio import sleep
 from random import randint
-
 # from spellchecker import SpellChecker
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands, routines
@@ -46,8 +45,9 @@ class Bot(commands.Bot):
 
     i = 0
     pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
-    trusted_users = []
-    initial_extensions = ["cogs.pokemon", "cogs.pokedex"]
+    trusted_users: list = []
+    initial_extensions: list = ["cogs.pokemon", "cogs.pokedex"]
+    reminders: list = []
 
     async def event_ready(self) -> None:
         print(f"Logged into {self.connected_channels} | {self.nick}")
@@ -62,6 +62,11 @@ class Bot(commands.Bot):
     async def event_message(self, msg) -> None:
         if msg.echo:
             return
+        for reminder in self.reminders:
+            print(reminder['for'])
+            if reminder['for'] == msg.author.name:
+                await msg.channel.send(f"@{msg.author.name} reminder from {reminder['sender']}: {reminder['message']}")
+                self.reminders.remove(reminder)
         if "gift me" in msg.content.lower():
             await msg.channel.send(f"/timeout {msg.author.name} 1m ")
         if "hello" in msg.content.lower():
@@ -390,7 +395,7 @@ class Bot(commands.Bot):
                 await channel.send("!f")
 
     # get chatter colour
-# TODO: check if user is in chat, scrape, otherwise resort to API calls
+    # TODO: check if user is in chat, scrape, otherwise resort to API calls
     @commands.command(name="colour")
     async def get_chatter_colour(self, ctx, *, msg):
         user = await self.fetch_users(names=[f"{msg}"])
@@ -798,7 +803,9 @@ class Bot(commands.Bot):
                 return
             print(type(response))
             pprint(response)
-            await ctx.channel.send(response[0]["meanings"][0]["definitions"][0]["definition"])except Exception as e:
+            await ctx.channel.send(
+                response[0]["meanings"][0]["definitions"][0]["definition"])
+        except Exception as e:
             print(e)
             await ctx.channel.send("An error has occurred!")
 
@@ -858,12 +865,20 @@ class Bot(commands.Bot):
         result = str(result[0]['first_seen']).split(".")[0]
         await ctx.channel.send(f"{msg} was first seen on {result}")
 
+    # send message to user when they next speak in chat
+    @commands.command(aliases=["remind"])
+    async def reminder(self, ctx: commands.Context, *, msg) -> None:
+        msg = msg.split(" ")
+        self.reminders.append({'sender': f"{ctx.author.name}", 'for': f"{msg[0]}", 'message': f"{msg[1]}"})
+        print(self.reminders)
+        await ctx.channel.send(f"I will remind {msg[0]} next time they speak")
+
 
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
     #
-# bot.pool = bot.loop.run_until_complete(
+    # bot.pool = bot.loop.run_until_complete(
     #     asyncpg.create_pool(
     #         host=os.environ['DB_HOST'],
     #         port=os.environ['DB_PORT'],

@@ -58,7 +58,7 @@ class pokedex_cog(commands.Cog):
             response = await self.bot.wait_for(
                 "message",
                 predicate=lambda m: m.author.name != self.bot.nick
-                and m.author == ctx.author,
+                                    and m.author == ctx.author,
             )
             if response[0].content == "y" or response[0].content == "yes":
                 await botDB.remove_all_pokemon(int(ctx.author.id))
@@ -122,16 +122,14 @@ class pokedex_cog(commands.Cog):
         await ctx.channel.send("Who do you wish to trade with?")
         name2 = await self.bot.wait_for(
             "message",
-            predicate=lambda m: ctx.author.name != self.bot.nick
-            and m.author == ctx.author,
+            predicate=lambda m: ctx.author.name != self.bot.nick and m.author == ctx.author,
             timeout=60,
         )
         name2 = name2[0].content
         await ctx.channel.send(f"@{name2}, would u like to trade with {name1}?")
         answer = await self.bot.wait_for(
             "message",
-            predicate=lambda m: ctx.author.name != self.bot.nick
-            and m.author.name == name2,
+            predicate=lambda m: ctx.author.name != self.bot.nick and m.author.name == name2,
         )
         id2 = answer[0].author.id
         if answer[0].content == "no":
@@ -140,16 +138,14 @@ class pokedex_cog(commands.Cog):
         await ctx.channel.send(f"@{name1}, which pokemon would you like to trade?")
         mon1 = await self.bot.wait_for(
             "message",
-            predicate=lambda m: ctx.author.name != self.bot.nick
-            and m.author.name == name1,
+            predicate=lambda m: ctx.author.name != self.bot.nick and m.author.name == name1,
             timeout=60,
         )
         mon1 = mon1[0].content
         await ctx.channel.send(f"@{name2}, which pokemon would you like to trade?")
         mon2 = await self.bot.wait_for(
             "message",
-            predicate=lambda m: ctx.author.name != self.bot.nick
-            and m.author.name == name2,
+            predicate=lambda m: ctx.author.name != self.bot.nick and m.author.name == name2,
             timeout=60,
         )
         mon2 = mon2[0].content
@@ -161,7 +157,7 @@ class pokedex_cog(commands.Cog):
             agreement = await self.bot.wait_for(
                 "message",
                 predicate=lambda m: ctx.author.name != self.bot.nick
-                and m.author.name in names,
+                                    and m.author.name in names,
                 timeout=60,
             )
             if agreement[0].content in ("yes", "y"):
@@ -174,12 +170,12 @@ class pokedex_cog(commands.Cog):
         id1 = int(id1)
         id2 = int(id2)
         if await botDB.exchange_pokemon(
-            user_id=id1,
-            pokemon_name=mon1,
-            user_id2=id2,
-            pokemon_name2=mon2,
-            username=name1,
-            username2=name2,
+                user_id=id1,
+                pokemon_name=mon1,
+                user_id2=id2,
+                pokemon_name2=mon2,
+                username=name1,
+                username2=name2,
         ):
             await ctx.channel.send("Trade successful!")
             return
