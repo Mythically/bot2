@@ -2,9 +2,11 @@
 import asyncio
 import time
 from pprint import pprint
-import pokepy
+
 import asyncpg
-import beckett.exceptions
+import pokepy
+from bs4 import BeautifulSoup
+
 import botDB
 import datetime
 import emoji
@@ -12,8 +14,6 @@ import math
 import os
 import re
 import requests
-import signal
-import subprocess as sp
 from datetime import datetime
 from asyncio import sleep
 from random import randint
@@ -51,7 +51,7 @@ class Bot(commands.Bot):
 
     async def event_ready(self) -> None:
         print(f"Logged into {self.connected_channels} | {self.nick}")
-        self.trusted_users = await botDB.get_trusted_users()
+        # self.trusted_users = await botDB.get_trusted_users()
         for channel in self.connected_channels:
             print(channel)
             await channel.send("I am online!")
@@ -67,6 +67,7 @@ class Bot(commands.Bot):
             if reminder['for'] == msg.author.name:
                 await msg.channel.send(f"@{msg.author.name} reminder from {reminder['sender']}: {reminder['message']}")
                 self.reminders.remove(reminder)
+        await self.handle_commands(msg)
         if "gift me" in msg.content.lower():
             await msg.channel.send(f"/timeout {msg.author.name} 1m ")
         if "hello" in msg.content.lower():
@@ -142,7 +143,6 @@ class Bot(commands.Bot):
                     and "primes" in msg.content
             ):
                 await msg.channel.send(f"/ban {name}")
-        await self.handle_commands(msg)
 
     @commands.command(name="test")
     async def test(self, msg) -> None:
@@ -233,7 +233,7 @@ class Bot(commands.Bot):
     async def saveskygod(self, msg) -> None:
         await msg.channel.send("/unban RollingSkyGod")
 
-    @commands.command(name="join")
+    @commands.command(name="goto")
     async def join(self, ctx, *, msg) -> None:
         channel_name = [msg]
         await bot.join_channels(channel_name)
@@ -365,28 +365,31 @@ class Bot(commands.Bot):
                 emoteString += str(emoticon["name"] + " ")
         return emoteString
 
-    @commands.command(name="song")
-    async def spotify_current_song(self, ctx) -> None:
-        if botDB.checkIfAlreadyInserted(ctx.channel.name):
-            current_song = spotify_playing.get_song(ctx.channel.name, ctx.channel)
-            await ctx.channel.send(current_song)
-        else:
-            await ctx.channel.send(
-                "It seems that this channel has not yet linked their spotify, please check with the "
-                "broadcaster."
-            )
 
-    @commands.command(name="spotify")
-    async def spotify_token(self, ctx) -> None:
-        await ctx.channel.send(
-            "You can sign up here :) -> https://accounts.spotify.com/authorize?client_id"
-            "=90082084b6b6423f8f08dd85e74f42b4&response_type=code&redirect_uri=https://b816-103-219-21"
-            "-123.eu.ngrok.io/&scope=user-read-currently-playing"
-        )
+    # @commands.command(name="song")
+    # async def spotify_current_song(self, ctx) -> None:
+    #     if botDB.checkIfAlreadyInserted(ctx.channel.name):
+    #         current_song = spotify_playing.get_song(ctx.channel.name, ctx.channel)
+    #         await ctx.channel.send(current_song)
+    #     else:
+    #         await ctx.channel.send(
+    #             "It seems that this channel has not yet linked their spotify, please check with the "
+    #             "broadcaster."
+    #         )
+
+    # @commands.command(name="spotify")
+    # async def spotify_token(self, ctx) -> None:
+    #     await ctx.channel.send(
+    #         "You can sign up here :) -> https://accounts.spotify.com/authorize?client_id"
+    #         "=90082084b6b6423f8f08dd85e74f42b4&response_type=code&redirect_uri=https://b816-103-219-21"
+    #         "-123.eu.ngrok.io/&scope=user-read-currently-playing"
+    #     )
+
 
     @commands.command(name="checkKey")
     async def checkSpotifyToken(self, ctx) -> None:
         await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
+
 
     @commands.command(name="sendmsg")
     async def send_message(self):
@@ -406,12 +409,21 @@ class Bot(commands.Bot):
 
     @commands.command(name="sayfile")
     async def sayfile(self, ctx, *, msg) -> None:
-        response = requests.get(f"{msg}")
-        bans = response.text.split("\n")
-        print(bans, type(bans))
-        for line in bans:
-            await ctx.channel.send(str(line))
-            await sleep(0.3)
+        paste_code = msg.split("/")
+        paste_code = paste_code[-1]
+        print(paste_code)
+        login = requests.post("https://pastebin.com/api/api_login.php",
+                              data={"api_dev_key": os.environ["PASTEBIN_API_KEY"],
+                                    "api_user_name": os.environ["PASTEBIN_USERNAME"],
+                                    "api_user_password": os.environ["PASTEBIN_PASSWORD"]})
+        print(login)
+        response = requests.post("https://pastebin.com/api/api_raw.php",
+                                 data={"api_dev_key": str(os.environ["PASTEBIN_API_KEY"]), "api_user_key": login.text,
+                                       "api_option": "show_paste", "api_paste_key": paste_code})
+        response = response.text.split("\n")
+        for line in response:
+            await ctx.channel.send(line)
+            await asyncio.sleep(0.3)
 
     @commands.command()
     async def pyramid(self, ctx, *, msg) -> None:
@@ -453,6 +465,9 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def dia(self, ctx, *, msg=None) -> None:
+        if msg.author.name != "themythh":
+            await ctx.channel.send(f"{msg.author.name} omg lmao hilarious")
+            return
         if msg is None:
             await ctx.channel.send("Please send a message")
         # response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
@@ -718,9 +733,9 @@ class Bot(commands.Bot):
         elif desc == "shower rain" or "rain" in desc:
             return emoji.emojize(":rain_cloud:", language="alias")
         elif desc == "rain":
-            return emoji.emojize(":cloud_rain:", language="alias")
+            return emoji.emojize(":cloud_with_rain:", language="alias")
         elif desc == "thunderstorm":
-            return emoji.emojize(":thunder_cloud_rain:", language="alias")
+            return emoji.emojize(":cloud_with_lightning_and_rain:", language="alias")
         elif desc == "snow":
             return emoji.emojize(":snowflake:", language="alias")
         elif desc == "mist":
@@ -869,21 +884,27 @@ class Bot(commands.Bot):
     @commands.command(aliases=["remind"])
     async def reminder(self, ctx: commands.Context, *, msg) -> None:
         msg = msg.split(" ")
-        self.reminders.append({'sender': f"{ctx.author.name}", 'for': f"{msg[0]}", 'message': f"{msg[1]}"})
+        user = msg[0]
+        for word in msg:
+            reminder = " ".join(msg[1:])
+        self.reminders.append({'sender': f"{ctx.author.name}", 'for': f"{user}", 'message': f"{reminder}"})
         print(self.reminders)
         await ctx.channel.send(f"I will remind {msg[0]} next time they speak")
+
+    @commands.command(aliases=["e"])
+    async def emote(self, ctx: commands.Context, *, msg=None) -> None:
+        await ctx.channel.send(emoji.emojize(":fog:"))
 
 
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
-    #
     # bot.pool = bot.loop.run_until_complete(
     #     asyncpg.create_pool(
-    #         host=os.environ['DB_HOST'],
-    #         port=os.environ['DB_PORT'],
-    #         user=os.environ['DB_USER'],
-    #         password=os.environ['DB_PASSWORD'],
-    #         database=os.environ['DB_NAME']
+    #         host="6.tcp.ngrok.io",
+    #         port='5432',
+    #         user='postgres',
+    #         password='M1m4897',
+    #         database='postgres'
     #     ))
     bot.run()
