@@ -350,6 +350,7 @@ class pokemon_cog(commands.Cog):
             msg = msg.replace(" ", "-")
         # print(msg)
         move = [self.pokemonClient.get_move(msg)]
+        print(move[0].accuracy)
         type = str(move[0].type.name)
         damage_class = str(move[0].damage_class.name)
         power = str(move[0].power)
@@ -411,6 +412,8 @@ class pokemon_cog(commands.Cog):
             + damage_class.capitalize()
             + " Power: "
             + power
+            + " Accuracy: "
+            + accuracy
             + " PP: "
             + pp
             + " Priority: "

@@ -4,6 +4,7 @@ import time
 from pprint import pprint
 
 import asyncpg
+import openai
 import pokepy
 from bs4 import BeautifulSoup
 
@@ -44,6 +45,7 @@ class Bot(commands.Bot):
         )
 
     i = 0
+    openai.api_key = os.getenv("OPENAI_API_KEY")
     pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
     trusted_users: list = []
     initial_extensions: list = ["cogs.pokemon", "cogs.pokedex"]
@@ -62,6 +64,7 @@ class Bot(commands.Bot):
     async def event_message(self, msg) -> None:
         if msg.echo:
             return
+
         for reminder in self.reminders:
             print(reminder['for'])
             if reminder['for'] == msg.author.name:
@@ -445,7 +448,7 @@ class Bot(commands.Bot):
         column = ""
 
         for rows in range(x):
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             column += new[0] + " "
             if len(column) > 500:
                 await ctx.channel.send("Message is longer than 500 characters")
@@ -454,7 +457,7 @@ class Bot(commands.Bot):
         column = column.rsplit(" ", 1)[0]
 
         for row in range(x - 1, 0, -1):
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             column = column.rsplit(" ", 1)[0]
             await ctx.channel.send(column)
 
@@ -464,14 +467,9 @@ class Bot(commands.Bot):
         await ctx.channel.send(str(number))
 
     @commands.command()
-    async def dia(self, ctx, *, msg=None) -> None:
-        if msg.author.name != "themythh":
-            await ctx.channel.send(f"{msg.author.name} omg lmao hilarious")
-            return
-        if msg is None:
-            await ctx.channel.send("Please send a message")
-        # response = (await bot.wait_for('message', predicate=lambda m: m.author == ctx.author))
-        await ctx.channel.send(msg)
+    async def dia(self, ctx, *, msg) -> None:
+        if str(ctx.author.name) == "themythh":
+            await ctx.channel.send(msg)
 
     @commands.command()
     async def fog(self, ctx) -> None:
@@ -838,34 +836,6 @@ class Bot(commands.Bot):
                 print(chatter.name, chatter.color)
                 print(chatter2.name, chatter2.color)
 
-    # send message to all channels the bot currently is in
-    # TODO: extract get pokemon, and add pokemon to db methods
-    # TODO: get mon in pre-routine hook, send message, in post-book update db
-    # TODO: send result message only in channels where people participated
-    @routines.routine(hours=2)
-    async def broadcast(self, ctx: commands.Context) -> None:
-        users = []
-        pokemon_id = randint(0, 1126)
-        pokemon = self.pokemonClient.get_pokemon(pokemon_id)
-        pokemon_name = pokemon.forms[0].name
-        for chan in self.connected_channels:
-            await chan.send(
-                f"A wild {pokemon_name} has appeared! Type \"catch\" for a chance to catch it! You have 20 seconds.")
-        try:
-            countdown = time.time()
-            print(countdown - time.time())
-            while (countdown - time.time()) < 20:
-                user = await self.wait_for("message", lambda m: not m.echo and m.content == "catch", timeout=20)
-                print(user[0].author.name)
-                print(user[0].content)
-                users += user
-        except asyncio.TimeoutError:
-            print("Timeout")
-            chosen = randint(0, len(users))
-            await ctx.channel.send(
-                f"{len(users)} trainers tried to catch the pokemon, @{users[chosen].author.name} caught it!"
-                " It will be sent to your pokedex, good job!")
-
     # when was a user last seen.
     @commands.command(aliases=["ls"])
     async def last_seen(self, ctx: commands.Context, *, msg) -> None:
@@ -895,7 +865,83 @@ class Bot(commands.Bot):
     async def emote(self, ctx: commands.Context, *, msg=None) -> None:
         await ctx.channel.send(emoji.emojize(":fog:"))
 
+    # return pokemon's stats as a message
+    @commands.command(aliases=["s"])
+    async def stats(self, ctx: commands.Context, *, msg=None) -> None:
+        if msg is None:
+            await ctx.channel.send("Please enter a pokemon")
+            return
+        try:
+            pokemon = self.pokemonClient.get_pokemon(msg.lower())
+            pokemon_type = pokemon.types[0].type.name
+            pokemon_type2 = pokemon.types[1].type.name
+            pokemon_stats = pokemon.stats
+            pokemon_hp = pokemon_stats[0].base_stat
+            pokemon_attack = pokemon_stats[1].base_stat
+            pokemon_defense = pokemon_stats[2].base_stat
+            pokemon_sp_attack = pokemon_stats[3].base_stat
+            pokemon_sp_defense = pokemon_stats[4].base_stat
+            pokemon_speed = pokemon_stats[5].base_stat
+            pokemon_total = pokemon_hp + pokemon_attack + pokemon_defense + pokemon_sp_attack + pokemon_sp_defense + pokemon_speed
+            await ctx.channel.send(
+                f"{msg} is a {pokemon_type}/{pokemon_type2} It has {pokemon_hp} hp, {pokemon_attack} attack, {pokemon_defense} defense, {pokemon_sp_attack} special attack, {pokemon_sp_defense} special defense, and {pokemon_speed} speed. total stats:{pokemon_total}.")
+        except Exception as e:
+            print(e)
+            await ctx.channel.send("An error has occurred!")
 
+    # command that sends message as request to openai api
+    @commands.command(name="ai", aliases=["openai"])
+    async def ai(self, ctx: commands.Context, *, msg) -> None:
+        if not self.is_trusted_user(ctx.author.name):
+            await ctx.channel.send("You are not allowed to use this command!")
+            return
+        if msg is None:
+            await ctx.channel.send("Please enter a message")
+            return
+        try:
+            response = openai.Completion.create(
+                prompt=msg,
+                engine="text-davinci-003",
+                temperature=1,
+                max_tokens=500,
+                frequency_penalty=0,
+                presence_penalty=0,
+                echo=False
+            )
+            text = response["choices"][0]["text"]
+            text.strip("\n")
+            text = text.split(" ")
+            answer = ""
+            for word in text:
+                if len(answer + word) > 500:
+                    await asyncio.sleep(0.3)
+                    await ctx.channel.send(answer)
+                    answer = ""
+                print(answer)
+                answer += " " + word
+        except asyncio.exceptions.TimeoutError as t:
+            print(t)
+            await ctx.channel.send("OpenAI API timed out")
+        except Exception as e:
+            print(e)
+            await ctx.channel.send("An error has occurred!")
+
+    # return pokemon item as a message
+    @commands.command(aliases=["i"])
+    async def item(self, ctx: commands.Context, *, msg=None) -> None:
+        if msg is None:
+            await ctx.channel.send("Please enter an item")
+            return
+        msg.replace(" ", "-")
+        try:
+            item = self.pokemonClient.get_item(msg.lower())
+            item_name = item.name
+            item_effect = item.effect_entries[0].effect
+            await ctx.channel.send(
+                f"{item_name} {item_effect}")
+        except Exception as e:
+            print(e)
+            await ctx.channel.send("An error has occurred!")
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
