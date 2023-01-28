@@ -942,6 +942,8 @@ class Bot(commands.Bot):
         except Exception as e:
             print(e)
             await ctx.channel.send("An error has occurred!")
+
+
 # bot.py
 if __name__ == "__main__":
     bot = Bot()

@@ -2,6 +2,7 @@ import asyncio
 import time
 from random import randint
 
+import pokepy
 from twitchio.ext import routines
 from twitchio.ext import commands
 from twitchio.ext.commands import Cog
@@ -10,6 +11,7 @@ from twitchio.ext.commands import Cog
 class pokemon_routine(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
 
     # send message to all channels the bot currently is in
     # TODO: extract get pokemon, and add pokemon to db methods
