@@ -5,3 +5,10 @@ ignore/
 ban.txt
 __pycache__
 docs
+cache
+bans.txt
+test3.py
+test_bot.py
+testing.py
+validateToken.py
+cogs/read_names_test.py
