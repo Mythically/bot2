@@ -4,6 +4,7 @@ from random import randint
 
 from twitchio.ext import routines
 from twitchio.ext import commands
+from twitchio.ext.commands import Cog
 
 
 class pokemon_routine(commands.Cog):
@@ -41,3 +42,7 @@ class pokemon_routine(commands.Cog):
                 f"{len(users)} trainers tried to catch the pokemon, @{users[chosen].author.name} caught it!"
                 " It will be sent to your pokedex, good job!"
             )
+
+
+def prepare(bot: commands.Bot):
+    bot.add_cog(pokemon_routine(bot))
