@@ -8,3 +8,7 @@ class db_cog(commands.Cog):
 
     async def event_ready(self):
         print("DB cog ready")
+
+    @commands.command(name="db")
+    async def db(self, ctx: commands.Context):
+        await ctx.send("DB cog")

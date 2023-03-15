@@ -895,16 +895,35 @@ class Bot(commands.Bot):
     async def emote(self, ctx: commands.Context, *, msg=None) -> None:
         await ctx.channel.send(emoji.emojize(":fog:"))
 
+    # add command to load a specific cog
+    @commands.command()
+    async def load(self, ctx: commands.Context, extension) -> None:
+        if self.is_trusted_user(ctx.author.name):
+            self.load_module(f"cogs.{extension}")
+            await ctx.channel.send(f"Loaded {extension}")
+        else:
+            await ctx.channel.send("You are not authorized to use this command")
+
+    # add command to unload specific cog
+    @commands.command()
+    async def unload(self, ctx: commands.Context, extension) -> None:
+        if self.is_trusted_user(ctx.author.name):
+            self.unload_module(f"cogs.{extension}")
+            await ctx.channel.send(f"Unloaded {extension}")
+        else:
+            await ctx.channel.send("You are not authorized to use this command")
+
+    # send message to all channels the bot is currecntly connected to
 
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
-    # bot.pool = bot.loop.run_until_complete(
-    #     asyncpg.create_pool(
-    #         host="6.tcp.ngrok.io",
-    #         port='5432',
-    #         user='postgres',
-    #         password='M1m4897',
-    #         database='postgres'
-    #     ))
+    bot.pool = bot.loop.run_until_complete(
+        asyncpg.create_pool(
+            host="8.tcp.ngrok.io",
+            port='5432',
+            user='postgres',
+            password='M1m4897',
+            database='postgres'
+        ))
     bot.run()

@@ -17,6 +17,7 @@ sphinx-rtd-theme = "*"
 openai = "*"
 pytz = "*"
 sphinx = "*"
+pint = "*"
 
 [dev-packages]
 
