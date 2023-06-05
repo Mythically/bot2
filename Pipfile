@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 twitchio = "*"
-pokepy = "*"
 pymongo = "*"
 flask = { extras = ["async"], version = "*" }
 pylint = "*"
@@ -14,10 +13,14 @@ asyncpg = "*"
 black = "*"
 pokebase = "*"
 sphinx-rtd-theme = "*"
-openai = "*"
 pytz = "*"
 sphinx = "*"
 pint = "*"
+requests = "==2.21.*"
+pokepy = ">=0.6.1"
+pdoc3 = "*"
+pep257 = "*"
+streamlink = "*"
 
 [dev-packages]
 

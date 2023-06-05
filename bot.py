@@ -5,25 +5,21 @@ from pprint import pprint
 
 import asyncpg
 import pokepy
-from bs4 import BeautifulSoup
-
 import botDB
 import datetime
 import emoji
-import math
 import os
 import re
 import requests
 from datetime import datetime
 from asyncio import sleep
 from random import randint
+
 # from spellchecker import SpellChecker
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands, routines
 
 # import spotify_playing
-from cogs import pokedex
-
 
 # from tqdm import tqdm
 
@@ -48,6 +44,11 @@ class Bot(commands.Bot):
     trusted_users: list = []
     initial_extensions: list = ["cogs.pokemon", "cogs.pokedex"]
     reminders: list = []
+    command_states = {}
+
+    """
+    Event that is triggered when the bot is ready to start processing events.
+    """
 
     async def event_ready(self) -> None:
         print(f"Logged into {self.connected_channels} | {self.nick}")
@@ -58,16 +59,36 @@ class Bot(commands.Bot):
         for cog in self.initial_extensions:
             print(cog)
             self.load_module(cog)
+        commands_list = self.commands.keys()
+        print(commands_list)
 
     async def event_message(self, msg) -> None:
+        """Responds to incoming messages in the Twitch chat.
+
+        Args:
+            self: The Twitch chatbot object.
+            msg: A Twitch chat message object.
+
+        Returns:
+            None
+
+        The function checks for incoming messages and performs several actions based on the message content. It checks for
+        reminders set for the user and sends them a reminder message if a reminder is due. It also handles any Twitch chat
+        commands and responses, such as timeouts or greetings. The function increments a counter for each incoming message
+        and sends the total number of messages received to the chat when the keyword 'messages' is included in a message
+        from a specific user.
+
+        """
         if msg.echo:
             return
         for reminder in self.reminders:
-            print(reminder['for'])
-            if reminder['for'] == msg.author.name:
-                await msg.channel.send(f"@{msg.author.name} reminder from {reminder['sender']}: {reminder['message']}")
+            if reminder["for"] == msg.author.name:
+                await msg.channel.send(
+                    f"@{msg.author.name} reminder from {reminder['sender']}: {reminder['message']}"
+                )
                 self.reminders.remove(reminder)
-        await self.handle_commands(msg)
+        if msg.content.startswith("!"):
+            await self.handle_commands(msg)
         if "gift me" in msg.content.lower():
             await msg.channel.send(f"/timeout {msg.author.name} 1m ")
         if "hello" in msg.content.lower():
@@ -127,15 +148,6 @@ class Bot(commands.Bot):
             if msg.echo:
                 return
             user_id = int(msg.author.id)
-            # await botDB.updateMessages(name, user_id)
-            # if "nightbot" in word:
-            # if "caught" in words2:
-            #     pokemon_name = words2[4].strip("!")
-            #     pokemon = [pokemonClient.get_pokemon(pokemon_name.lower())]
-            #     pokemon_id = pokemon[0].id
-            #     await msg.channel.send(
-            #         f"Detected pokemon: {pokemon_name}, #{pokemon_id}"
-            #     )
             if (
                     "buy" in msg.content
                     and "followers" in msg.content
@@ -145,42 +157,73 @@ class Bot(commands.Bot):
                 await msg.channel.send(f"/ban {name}")
 
     @commands.command(name="test")
-    async def test(self, msg) -> None:
-        print("test")
-        await msg.channel.send("test passed!")
+    async def test(self, ctx: commands.Context, *, msg=None) -> None:
+        """A test command to check if the bot is functioning properly.
+
+        Args:
+            self: The Twitch chatbot object.
+            msg: A Twitch chat message object.
+
+        Returns:
+            None
+
+        The function simply responds with a message "test passed!" to indicate that the command has been executed
+        successfully. It is used to check if the bot is functioning properly.
+        """
+        print(ctx)
+        await ctx.channel.send("test passed!")
 
     @commands.command(name="vanish")
-    async def time_outed(self, msg) -> None:
+    async def vanish(self, msg) -> None:
+        """Timeouts the user who sends the command for 1 second.
+
+        Args:
+            self: The Twitch chatbot object.
+            msg: A Twitch chat message object.
+
+        Returns:
+            None
+
+        The function sends a timeout command to the user who sends the '!vanish' command, putting them in timeout for 1 second.
+        """
         if msg.author.name != bot.nick:
             print(f"/timeout {msg.author.name}")
             await msg.channel.send(f"/timeout {msg.author.name} 1s")
 
     @commands.command(name="timer")
     async def timer(self, ctx, *, msg) -> None:
-        if "s" in msg:
-            msg = msg[:-1]
-        if "m" in msg:
-            msg = msg[:-1]
-            msg = int(msg)
-            msg *= 60
-        if int(msg) > 0:
-            mins = int(msg) / 60
-            secs = str(int(msg) % 60) + "s"
-            hours = mins / 60
-            hours = str(math.floor(hours)) + "h"
-            mins %= 60
-            mins = str(round(mins)) + "m"
-            if mins == "0m":
-                mins = ""
-            if hours == "0h":
-                hours = ""
-            if secs == "0s":
-                secs = ""
-            await ctx.channel.send("Timer " + hours + mins + secs + " started :)")
-            await sleep(int(msg))
-            await ctx.channel.send(
-                "Timer of " + hours + mins + secs + ", just ran out!"
-            )
+        """Starts a timer for a specified duration and sends a notification message when it runs out.
+
+        Args:
+            self: The Twitch chatbot object.
+            ctx: A Twitch command context object.
+            msg: A string message containing the duration for the timer.
+
+        Returns:
+            None
+
+        The function takes a string message containing the duration for the timer in seconds, minutes, or hours
+        (specified with 's', 'm', or 'h' respectively). It then converts the duration to seconds, starts the timer, and
+        sends a notification message when the timer runs out. The notification message includes the original duration of
+        the timer in hours, minutes, and seconds.
+        """
+        time_unit = msg[-1]
+        msg = msg.rstrip("hms")
+        if msg:
+            total_seconds = int(msg)
+            if time_unit == "m":
+                total_seconds *= 60
+            elif time_unit == "h":
+                total_seconds *= 3600
+            if total_seconds > 0:
+                hours, remainder = divmod(total_seconds, 3600)
+                mins, secs = divmod(remainder, 60)
+                time_str = f"{hours}h" if hours else ""
+                time_str += f"{mins}m" if mins else ""
+                time_str += f"{secs}s" if secs else ""
+                await ctx.reply(f"Timer {time_str} started :)")
+                await asyncio.sleep(total_seconds)
+                await ctx.reply(f"{time_str} timer, just ran out!")
 
     @commands.command(name="lag")
     async def lag(self, msg) -> None:
@@ -189,8 +232,8 @@ class Bot(commands.Bot):
                 await sleep(1)
                 await msg.channel.send("SourPls LAG THE CHAT SourPls ")
 
-    @commands.command(name="so")
-    async def so(self, ctx, *, msg) -> None:
+    @commands.command(name="shoutout")
+    async def shoutout(self, ctx, *, msg) -> None:
         game = await self.fetch_channel(msg)
         await ctx.channel.send(
             "Yo what are you waiting for, go check out "
@@ -219,6 +262,18 @@ class Bot(commands.Bot):
 
     @commands.command(name="coinflip", aliases=["cf"])
     async def coinflip(self, msg) -> None:
+        """Simulates a coin flip and sends the result to the chat.
+
+        Args:
+            self: The Twitch chatbot object.
+            msg: A Twitch chat message object.
+
+        Returns:
+            None
+
+        The function generates a random number between 1 and 2 to simulate a coin flip, and sends the result to the chat.
+        If the number is 1, the result is HEADS, otherwise the result is TAILS.
+        """
         number = randint(1, 2)
         if number == 1:
             await msg.channel.send("It landed on HEADS")
@@ -234,7 +289,21 @@ class Bot(commands.Bot):
         await msg.channel.send("/unban RollingSkyGod")
 
     @commands.command(name="goto")
-    async def join(self, ctx, *, msg) -> None:
+    async def goto(self, ctx, *, msg) -> None:
+        """Joins the specified Twitch channel and sends a notification message to the chat.
+
+        Args:
+            self: The Twitch chatbot object.
+            ctx: A Twitch command context object.
+            msg: A string message containing the name of the Twitch channel to join.
+
+        Returns:
+            None
+
+        The function takes a string message containing the name of the Twitch channel to join, and joins the channel using
+        the bot's `join_channels` method. It then sends a notification message to the chat confirming that the bot has
+        joined the channel.
+        """
         channel_name = [msg]
         await bot.join_channels(channel_name)
         await ctx.channel.send("Joined channel: " + str(channel_name))
@@ -243,6 +312,19 @@ class Bot(commands.Bot):
     # leave current channel
     @commands.command(name="leave", aliases=["l"])
     async def leave(self, ctx: commands.Context):
+        """Leaves the current Twitch channel and sends a notification message to the chat.
+
+        Args:
+            self: The Twitch chatbot object.
+            ctx: A Twitch command context object.
+
+        Returns:
+            None
+
+        The function takes a Twitch command context object and uses its `channel` attribute to get the name of the
+        current Twitch channel. It then calls the bot's `part_channels` method to leave the channel and sends a
+        notification message to the chat confirming that the bot has left the channel.
+        """
         await ctx.channel.send("Leaving channel, bye!")
         await self.part_channels([ctx.channel.name])
 
@@ -303,6 +385,23 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def bttvemotes(self, ctx, *, msg=None) -> None:
+        """Fetches and displays BetterTTV emotes for the specified Twitch channel, or the current channel if none is specified.
+
+        Args:
+            self: The Twitch chatbot object.
+            ctx: A Twitch command context object.
+            msg: A string representing the name of the Twitch channel to fetch BetterTTV emotes for. Defaults to None.
+
+        Returns:
+            None
+
+        If `msg` is None, the function fetches BetterTTV emotes for the current Twitch channel using the `channel` attribute
+        of the `ctx` object. Otherwise, it fetches the emotes for the specified channel using the `requests` module to send
+        an HTTP GET request to the BetterTTV API. It then splits the response text into a list of words and concatenates
+        them until the length of the concatenated string exceeds 500 characters or it reaches the end of the list. The
+        concatenated string is then sent to the chat using the `ctx` object's `channel` attribute. The function waits for
+        2 seconds before sending the next message, in order to avoid rate limiting.
+        """
         if msg is None:
             print(msg, ctx.channel.name)
             msg = ctx.channel.name
@@ -323,6 +422,17 @@ class Bot(commands.Bot):
 
     @commands.command(name="7tvemotes")
     async def seventvemotes(self, ctx, *, msg=None) -> None:
+        """
+            Fetches and sends all 7TV emotes for the given user in the chat. If no user is specified, the emotes for the current channel will be sent.
+
+        Args:
+        ctx: The context object.
+        msg (optional): The name of the user whose 7TV emotes are to be fetched. If None, the emotes for the current channel will be fetched.
+
+        Returns:
+
+        None. The function only sends messages to the chat.
+        """
         if msg is None:
             print(msg, ctx.channel.name)
             msg = ctx.channel.name
@@ -343,6 +453,13 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def ffzemotes(self, ctx, *, msg=None) -> None:
+        """
+        Fetches and sends all FFZ emotes for the given user in the chat. If no user is specified, the emotes for the current channel will be sent.
+        :param ctx:
+        :param msg:
+        :return: None. The function sends the emotes as a string to the chat.
+
+        """
         emoteString = ""
         if msg is None:
             print(msg, ctx.channel.name)
@@ -356,6 +473,11 @@ class Bot(commands.Bot):
         await ctx.channel.send(emoteString)
 
     def ffzemotes2(self, msg) -> str:
+        """
+        Fetches and returns all FFZ emotes for the given user in the chat. If no user is specified, the emotes for the current channel will be sent.
+        :param msg:
+        :return:  None. A string containing the FrankerFaceZ emotes for the specified channel to the chat.
+        """
         emoteString = ""
         response = requests.get("https://api.frankerfacez.com/v1/room/" + msg)
         fetch = response.json()
@@ -364,7 +486,6 @@ class Bot(commands.Bot):
             for emoticon in id["emoticons"]:
                 emoteString += str(emoticon["name"] + " ")
         return emoteString
-
 
     # @commands.command(name="song")
     # async def spotify_current_song(self, ctx) -> None:
@@ -385,11 +506,9 @@ class Bot(commands.Bot):
     #         "-123.eu.ngrok.io/&scope=user-read-currently-playing"
     #     )
 
-
     @commands.command(name="checkKey")
     async def checkSpotifyToken(self, ctx) -> None:
         await ctx.channel.send(botDB.checkSpotifyRefreshToken(ctx.author.name))
-
 
     @commands.command(name="sendmsg")
     async def send_message(self):
@@ -401,6 +520,15 @@ class Bot(commands.Bot):
     # TODO: check if user is in chat, scrape, otherwise resort to API calls
     @commands.command(name="colour")
     async def get_chatter_colour(self, ctx, *, msg):
+        """
+        Gets the colour of a chatter in the chat.
+        Parameters:
+            - ctx (commands.Context): The context of the command.
+            - msg (str): The username of the Twitch user.
+
+        Returns:
+            - This function retrieves the color associated with a Twitch user's username in the current channel. The ctx parameter is the context of the command, and msg is the username of the Twitch user. The function uses the fetch_users method of the TwitchIO library to fetch the user's ID, and then passes that ID to the fetch_chatters_colors method to retrieve the user's color. Finally, the function sends the color to the current channel using the send method of the context.
+        """
         user = await self.fetch_users(names=[f"{msg}"])
         user_id = int(user[0].id)
         channel = await self.fetch_chatters_colors([user_id])
@@ -409,17 +537,35 @@ class Bot(commands.Bot):
 
     @commands.command(name="sayfile")
     async def sayfile(self, ctx, *, msg) -> None:
+        """
+             Sends the content of a file hosted on pastebin.com to the chat.
+
+        Parameters:
+            - ctx (twitchio.Context): The context of the command invocation.
+            - msg (str): The URL of the pastebin.com file.
+
+        Returns:
+            None. The function sends the content of the file to the chat.
+        """
         paste_code = msg.split("/")
         paste_code = paste_code[-1]
-        print(paste_code)
-        login = requests.post("https://pastebin.com/api/api_login.php",
-                              data={"api_dev_key": os.environ["PASTEBIN_API_KEY"],
-                                    "api_user_name": os.environ["PASTEBIN_USERNAME"],
-                                    "api_user_password": os.environ["PASTEBIN_PASSWORD"]})
-        print(login)
-        response = requests.post("https://pastebin.com/api/api_raw.php",
-                                 data={"api_dev_key": str(os.environ["PASTEBIN_API_KEY"]), "api_user_key": login.text,
-                                       "api_option": "show_paste", "api_paste_key": paste_code})
+        login = requests.post(
+            "https://pastebin.com/api/api_login.php",
+            data={
+                "api_dev_key": os.environ["PASTEBIN_API_KEY"],
+                "api_user_name": os.environ["PASTEBIN_USERNAME"],
+                "api_user_password": os.environ["PASTEBIN_PASSWORD"],
+            },
+        )
+        response = requests.post(
+            "https://pastebin.com/api/api_raw.php",
+            data={
+                "api_dev_key": str(os.environ["PASTEBIN_API_KEY"]),
+                "api_user_key": login.text,
+                "api_option": "show_paste",
+                "api_paste_key": paste_code,
+            },
+        )
         response = response.text.split("\n")
         for line in response:
             await ctx.channel.send(line)
@@ -427,6 +573,12 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def pyramid(self, ctx, *, msg) -> None:
+        """
+        Creates a pyramid of the given character or word with the given height.
+        :param ctx:                 The context of the command.
+        :param msg:        The message string passed as argument. Should be in the format "<character> <height>".
+        :return:                   None. The function sends the pyramid to the chat.
+        """
         new = msg.split(" ")
         limit = 5
         if ctx.author.is_broadcaster:
@@ -465,6 +617,14 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def dia(self, ctx, *, msg=None) -> None:
+        """
+        Sends a message to the chat as the bot only if the author is mythh.
+        ctx : twitchio.Context
+            The context of the command.
+        msg : str, optional
+            The message to be sent to the chat.
+        :return:
+        """
         if msg.author.name != "themythh":
             await ctx.channel.send(f"{msg.author.name} omg lmao hilarious")
             return
@@ -479,6 +639,12 @@ class Bot(commands.Bot):
 
     @commands.command(name="fact")
     async def facts(self, ctx, *, msg=None) -> None:
+        """
+        This command sends a fact to the chat based on a given category or a random category if none is specified. It uses the "numbersapi" API to retrieve the fact.
+        :param ctx: The context in which the command was triggered
+        :param msg: A string indicating the category of the fact to be sent, if any.
+        :return None: The function sends the fact to the chat.
+        """
         if msg is None:
             facts = ["random/math", "random/trivia"]
             number = randint(0, 1)
@@ -488,6 +654,12 @@ class Bot(commands.Bot):
 
     @commands.command(name="8ball")
     async def eight_ball(self, ctx, *, msg=None) -> None:
+        """
+        This command sends a random answer to the chat based on a given question. It uses the "8ball" API to retrieve the answer.
+        :param ctx: The context in which the command was triggered
+        :param msg: A string indicating the question to be answered.
+        :return: None. The function sends the answer to the chat.
+        """
         if msg is None:
             await ctx.channel.send("Please ask a question")
             return
@@ -592,6 +764,12 @@ class Bot(commands.Bot):
     # use coords_city() to get the weather of a city from openweathermap 2.5 api
     @commands.command(name="weather")
     async def weather(self, ctx: commands.Context, *, msg=None) -> None:
+        """
+        This function retrieves the current weather data of a location and sends it to the chat.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: Optional string argument representing the location to retrieve the weather data from, or None if the user has set their location
+        :return: None. If the weather data was successfully retrieved and sent to the chat, or an error message if the weather data could not be retrieved
+        """
         coords = []
         if msg is None:
             if await botDB.is_location_set(int(ctx.author.id)):
@@ -678,6 +856,12 @@ class Bot(commands.Bot):
     # save the user's location to mongoDB database
     @commands.command(name="set_location", aliases=["sl"])
     async def set_location(self, ctx, *, msg=None) -> None:
+        """
+        This function saves the user's location to the database.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  Optional string argument representing the location to save, or None if the user has set their location
+        :return: None. If the location was successfully saved, or an error message if the location could not be saved
+        """
         if msg is None:
             await ctx.channel.send(
                 "Please enter a city, or set your location with !set_location"
@@ -704,6 +888,12 @@ class Bot(commands.Bot):
     # update user's location
     @commands.command(name="update_location", aliases=["ul"])
     async def update_location(self, ctx, *, msg=None) -> None:
+        """
+        This function updates the user's location in the database.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: Optional string argument representing the location to save, or None if the user has set their location
+        :return: None. The function sends a message to the user's channel with the response from the botDB.update_location() function. If the city entered by the user is not found, the function sends a message to the user's channel saying "City not found".
+        """
         if msg is None:
             await ctx.channel.send(
                 "Please enter a city, or set your location with !set_location"
@@ -748,6 +938,12 @@ class Bot(commands.Bot):
     # fill message with string
     @commands.command()
     async def fill(self, ctx, *, msg) -> None:
+        """
+            Fill the chat with the given message repeatedly until the total message length is at least 500 characters.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the message to fill the chat with
+        :return:  None. The function sends a message to the user's channel with the filled message.
+        """
         filled = ""
         while len(filled + msg) < 500:
             filled += msg + " "
@@ -756,6 +952,12 @@ class Bot(commands.Bot):
     # add trusted users for link moderation
     @commands.command(name="permit", aliases=["p"])
     async def permit(self, ctx, *, msg) -> None:
+        """
+        Add a user to the list of trusted users who can use commands that are restricted to moderators, broadcasters, or owners.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the user to add to the list of trusted users
+        :return:  None. The function sends a message to the user's channel with the response from the botDB.add_trusted_user() function.
+        """
         if ctx.author.is_broadcaster or ctx.author.is_mod or ctx.author.is_owner:
             # user_id = requests.get(f"https://api.twitch.tv/helix/users?login={msg}").json()["data"][0]["id"]
             if await botDB.add_trusted_user(username=msg):
@@ -768,6 +970,12 @@ class Bot(commands.Bot):
     # get ability from pokepy
     @commands.command(name="ability", aliases=["a"])
     async def ability(self, ctx: commands.Context, *, msg) -> None:
+        """
+        This command retrieves the effect of a Pokemon ability using the PokeAPI.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: string argument representing the ability to retrieve
+        :return: None. The function sends a message to the user's channel with the effect of the ability.
+        """
         ability = self.pokemonClient.get_ability(msg).effect_entries
         for key in ability:
             if key.language.name == "en":
@@ -777,6 +985,12 @@ class Bot(commands.Bot):
     # get berry from pokepy
     @commands.command(name="berry", aliases=["b"])
     async def berry(self, ctx: commands.Context, *, msg) -> None:
+        """
+        Retrieves information about a specified berry in the Pokemon game and returns the short description of its effect.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the berry to retrieve
+        :return:  None. The function sends a message to the user's channel with the short description of the berry's effect.
+        """
         berry = requests.get(self.pokemonClient.get_berry(msg).item.url).json()[
             "effect_entries"
         ]
@@ -799,6 +1013,12 @@ class Bot(commands.Bot):
     async def event_command_error(
             self, ctx: commands.Context, error: Exception
     ) -> None:
+        """
+        This function handles errors that occur during command execution, and specifically handles the case where a command is on cooldown. It sends a message to the channel indicating the remaining cooldown time.
+        :param ctx:  commands.Context object representing the invocation context
+        :param error:  Exception object representing the error that occurred
+        :return:  None. The function sends a message to the user's channel with the remaining cooldown time.
+        """
         if isinstance(error, commands.CommandOnCooldown):
             time = str(error).split(".", 1)[1].replace("(", "").replace(")", "")
             await ctx.send("Command is on CD, " + time)
@@ -806,6 +1026,12 @@ class Bot(commands.Bot):
     # command to get a word definition from dictionaryapi
     @commands.command(name="define", aliases=["d"])
     async def define(self, ctx: commands.Context, *, msg) -> None:
+        """
+        Sends the definition of a word to the channel.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the word to define
+        :return:  None. The function sends a message to the user's channel with the definition of the word.
+        """
         if msg is None:
             await ctx.channel.send("Please enter a word")
             return
@@ -819,7 +1045,8 @@ class Bot(commands.Bot):
             print(type(response))
             pprint(response)
             await ctx.channel.send(
-                response[0]["meanings"][0]["definitions"][0]["definition"])
+                response[0]["meanings"][0]["definitions"][0]["definition"]
+            )
         except Exception as e:
             print(e)
             await ctx.channel.send("An error has occurred!")
@@ -850,12 +1077,15 @@ class Bot(commands.Bot):
         pokemon_name = pokemon.forms[0].name
         for chan in self.connected_channels:
             await chan.send(
-                f"A wild {pokemon_name} has appeared! Type \"catch\" for a chance to catch it! You have 20 seconds.")
+                f'A wild {pokemon_name} has appeared! Type "catch" for a chance to catch it! You have 20 seconds.'
+            )
         try:
             countdown = time.time()
             print(countdown - time.time())
             while (countdown - time.time()) < 20:
-                user = await self.wait_for("message", lambda m: not m.echo and m.content == "catch", timeout=20)
+                user = await self.wait_for(
+                    "message", lambda m: not m.echo and m.content == "catch", timeout=20
+                )
                 print(user[0].author.name)
                 print(user[0].content)
                 users += user
@@ -864,30 +1094,51 @@ class Bot(commands.Bot):
             chosen = randint(0, len(users))
             await ctx.channel.send(
                 f"{len(users)} trainers tried to catch the pokemon, @{users[chosen].author.name} caught it!"
-                " It will be sent to your pokedex, good job!")
+                " It will be sent to your pokedex, good job!"
+            )
 
     # when was a user last seen.
     @commands.command(aliases=["ls"])
     async def last_seen(self, ctx: commands.Context, *, msg) -> None:
+        """
+        Retrieve the last time a user was seen and send a message to the channel with the information.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the user to check
+        :return:  None. The function sends a message to the user's channel with the last time the user was seen.
+        """
         result = await botDB.get_user(msg)
-        result = str(result[0]['last_seen']).split(".")[0]
+        result = str(result[0]["last_seen"]).split(".")[0]
         await ctx.channel.send(f"{msg} was last seen on {result}")
 
     # when was a user first seen
     @commands.command(aliases=["fs"])
     async def first_seen(self, ctx: commands.Context, *, msg) -> None:
+        """
+        This function retrieves and displays the first time a user was seen by the bot.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: string argument representing the user to check
+        :return: None. The function sends a message to the user's channel with the first time the user was seen.
+        """
         result = await botDB.get_user(msg)
-        result = str(result[0]['first_seen']).split(".")[0]
+        result = str(result[0]["first_seen"]).split(".")[0]
         await ctx.channel.send(f"{msg} was first seen on {result}")
 
     # send message to user when they next speak in chat
     @commands.command(aliases=["remind"])
     async def reminder(self, ctx: commands.Context, *, msg) -> None:
+        """
+        Sets a reminder for a user to be triggered next time they speak in chat.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: string argument representing the user to remind and the message to send
+        :return: None. The function sends a message to the user's channel with the reminder.
+        """
         msg = msg.split(" ")
         user = msg[0]
         for word in msg:
             reminder = " ".join(msg[1:])
-        self.reminders.append({'sender': f"{ctx.author.name}", 'for': f"{user}", 'message': f"{reminder}"})
+        self.reminders.append(
+            {"sender": f"{ctx.author.name}", "for": f"{user}", "message": f"{reminder}"}
+        )
         print(self.reminders)
         await ctx.channel.send(f"I will remind {msg[0]} next time they speak")
 
@@ -896,24 +1147,127 @@ class Bot(commands.Bot):
         await ctx.channel.send(emoji.emojize(":fog:"))
 
     # add command to load a specific cog
-    @commands.command()
-    async def load(self, ctx: commands.Context, extension) -> None:
-        if self.is_trusted_user(ctx.author.name):
-            self.load_module(f"cogs.{extension}")
-            await ctx.channel.send(f"Loaded {extension}")
-        else:
-            await ctx.channel.send("You are not authorized to use this command")
+    @commands.command(name="lm")
+    async def load_m(self, ctx: commands.Context, extension) -> None:
+        """
+        Loads a specified extension (a module containing commands). Only trusted users (broadcaster, moderator, owner, or users added by the "permit" command) can use this command.
+        :param ctx: commands.Context object representing the invocation context
+        :param extension: string argument representing the extension to load
+        :return: None. The function sends a message to the user's channel with the result of the command.
+        """
+        print(extension)
+        self.load_module(f"cogs.{extension}")
+        await ctx.channel.send(f"Loaded {extension}")
 
     # add command to unload specific cog
     @commands.command()
     async def unload(self, ctx: commands.Context, extension) -> None:
+        """
+        Unloads a given extension from the bot. Only trusted users (broadcaster, moderator, owner, or users added by the "permit" command) can use this command.
+        :param ctx: commands.Context object representing the invocation context
+        :param extension: string argument representing the extension to unload
+        :return: None. The function sends a message to the user's channel with the result of the command.
+        """
         if self.is_trusted_user(ctx.author.name):
             self.unload_module(f"cogs.{extension}")
             await ctx.channel.send(f"Unloaded {extension}")
         else:
             await ctx.channel.send("You are not authorized to use this command")
 
-    # send message to all channels the bot is currecntly connected to
+    @commands.command(name="ai", aliases=["openai"])
+    async def ai(self, ctx: commands.Context, *, msg) -> None:
+        """
+        This function is a command for a Twitch chatbot that uses the OpenAI API to generate text based on user input. The function takes in a message as an argument and sends it to the OpenAI API to generate a response. The response is then split into multiple messages and sent back to the user in the Twitch chat.
+        :param ctx: the context object of the command invocation
+        :param msg: the message that the user inputs as a prompt for the OpenAI API
+        :return: None. It sends messages to the Twitch chat instead
+        """
+        if not self.is_trusted_user(ctx.author.name):
+            await ctx.channel.send("You are not allowed to use this command!")
+            return
+        if msg is None:
+            await ctx.channel.send("Please enter a message")
+            return
+        try:
+            response = requests.post(
+                f"https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                },
+                json={
+                    "model": "gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": msg}],
+                    "max_tokens": 500,
+                },
+            ).json()
+            text = response["choices"][0]["message"]["content"].split(" ")
+            print(text)
+            answer = f"@{ctx.author.name} "
+            for word in text:
+                if len(answer + word + " ") > 500:
+                    await ctx.channel.send(answer)
+                    answer = f"@{ctx.author.name} "
+                else:
+                    answer += word + " "
+            await ctx.channel.send(answer)
+        except asyncio.exceptions.TimeoutError as t:
+            print(t)
+            await ctx.channel.send("OpenAI API timed out")
+        except Exception as e:
+            print("error")
+            print(e)
+            await ctx.channel.send("An error has occurred!")
+
+    # Function to toggle the state of a command for a specific channel
+    @commands.command(name="toggle")
+    async def toggle(self, ctx, command_name: str):
+        for name, command in self.bot.commands.items():
+            if hasattr(command.callback, "toggle"):
+                await command.callback.toggle(ctx, command_name)
+
+    async def toggle_command(self, ctx: commands.Context, command_name: str):
+        channel_id = str(ctx.channel)
+        if channel_id not in self.command_states:
+            self.command_states[channel_id] = {}
+
+        if command_name in self.command_states[channel_id]:
+            self.command_states[channel_id][command_name] = not self.command_states[
+                channel_id
+            ][command_name]
+        else:
+            self.command_states[channel_id][command_name] = False
+
+        state = (
+            "enabled" if self.command_states[channel_id][command_name] else "disabled"
+        )
+        await ctx.send(f"Command {command_name} is now {state} in this channel.")
+
+    async def before_invoke(self, ctx):
+        channel_id = str(ctx.channel.id)
+        command_name = ctx.command.name
+        if (
+                channel_id in self.command_states
+                and command_name in self.command_states[channel_id]
+                and not self.command_states[channel_id][command_name]
+        ):
+            await ctx.send(
+                f"Sorry, the {command_name} command is currently disabled in this channel."
+            )
+            raise commands.CommandError(
+                f"Command {command_name} is disabled in this channel."
+            )
+
+    @commands.command(name="switch")
+    async def toggle_command(self, ctx: commands.Context, command_name: str):
+        await self.toggle_command(ctx, command_name)
+
+    # Execute the command...
+
+    @commands.command(name="title")
+    async def title(self, ctx: commands.Context, *, title: str):
+        await ctx.get_user(ctx.channel.name).modify_stream(title=title)
+
 
 # bot.py
 if __name__ == "__main__":
@@ -921,9 +1275,10 @@ if __name__ == "__main__":
     bot.pool = bot.loop.run_until_complete(
         asyncpg.create_pool(
             host="8.tcp.ngrok.io",
-            port='5432',
-            user='postgres',
-            password='M1m4897',
-            database='postgres'
-        ))
+            port="11958",
+            user="postgres",
+            password="M1m4897",
+            database="postgres",
+        )
+    )
     bot.run()
