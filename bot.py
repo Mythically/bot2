@@ -2,7 +2,6 @@
 import asyncio
 import time
 from pprint import pprint
-
 import asyncpg
 import pokepy
 import botDB
@@ -42,10 +41,11 @@ class Bot(commands.Bot):
     i = 0
     pokemonClient = pokepy.V2Client(cache="in_disk", cache_location="./cache")
     trusted_users: list = []
-    initial_extensions: list = ["cogs.pokemon", "cogs.pokedex"]
+    initial_extensions: list = ["cogs.pokemon", "cogs.pokedex", "cogs.db"]
     reminders: list = []
     command_states = {}
-
+    timer_start: int = 0
+    timer_stop: int = 0
     """
     Event that is triggered when the bot is ready to start processing events.
     """
@@ -63,6 +63,13 @@ class Bot(commands.Bot):
         print(commands_list)
 
     async def event_message(self, msg) -> None:
+        if (
+            msg.first
+            and msg.channel.name.lower() == self.nick.lower()
+            or msg.content.startswith("@thenerdgebot")
+        ):
+            print("ai_help event_message")
+            await self.ai_help(msg)
         """Responds to incoming messages in the Twitch chat.
 
         Args:
@@ -99,9 +106,8 @@ class Bot(commands.Bot):
         if msg.content:
             self.i += 1
 
-            if "messages" in msg.content.lower():
-                if msg.author.name == "themythh":
-                    await msg.channel.send(str(self.i))
+            if "messages" in msg.content.lower() and msg.author.name == "themythh":
+                await msg.channel.send(str(self.i))
         # if " what " and " song " in a.content.lower():
         #     spotify_playing.get_current_track()
 
@@ -127,17 +133,17 @@ class Bot(commands.Bot):
         #
 
         if (
-                self.is_trusted_user(msg.author.name)
-                or msg.author.is_mod
-                or msg.author.is_subscriber
-                or msg.author.is_broadcaster
+            self.is_trusted_user(msg.author.name)
+            or msg.author.is_mod
+            or msg.author.is_subscriber
+            or msg.author.is_broadcaster
         ):
             regex = (
                 r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()"
                 r"<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
             )
             if re.search(regex, msg.content):
-                await msg.channel.send("/timeout " + msg.author.name + " 1m")
+                await msg.channel.send(f"/timeout {msg.author.name} 1m")
                 await msg.channel.send(
                     f"[WARNING] @{msg.author.name} If you are not subscribed, please ask a moderator to send your link."
                 )
@@ -149,10 +155,10 @@ class Bot(commands.Bot):
                 return
             user_id = int(msg.author.id)
             if (
-                    "buy" in msg.content
-                    and "followers" in msg.content
-                    and "viewers" in msg.content
-                    and "primes" in msg.content
+                "buy" in msg.content
+                and "followers" in msg.content
+                and "viewers" in msg.content
+                and "primes" in msg.content
             ):
                 await msg.channel.send(f"/ban {name}")
 
@@ -190,40 +196,49 @@ class Bot(commands.Bot):
             print(f"/timeout {msg.author.name}")
             await msg.channel.send(f"/timeout {msg.author.name} 1s")
 
-    @commands.command(name="timer")
-    async def timer(self, ctx, *, msg) -> None:
-        """Starts a timer for a specified duration and sends a notification message when it runs out.
+    # @commands.command(name="timer")
+    # async def timer(self, ctx, *, msg) -> None:
+    #     """Starts a timer for a specified duration and sends a notification message when it runs out.
+    #
+    #     Args:
+    #         self: The Twitch chatbot object.
+    #         ctx: A Twitch command context object.
+    #         msg: A string message containing the duration for the timer.
+    #
+    #     Returns:
+    #         None
+    #
+    #     The function takes a string message containing the duration for the timer in seconds, minutes, or hours
+    #     (specified with 's', 'm', or 'h' respectively). It then converts the duration to seconds, starts the timer, and
+    #     sends a notification message when the timer runs out. The notification message includes the original duration of
+    #     the timer in hours, minutes, and seconds.
+    #     """
+    #     time_unit = msg[-1]
+    #     msg = msg.rstrip("hms")
+    #     if msg:
+    #         total_seconds = int(msg)
+    #         if time_unit == "m":
+    #             total_seconds *= 60
+    #         elif time_unit == "h":
+    #             total_seconds *= 3600
+    #         if total_seconds > 0:
+    #             hours, remainder = divmod(total_seconds, 3600)
+    #             mins, secs = divmod(remainder, 60)
+    #             time_str = f"{hours}h" if hours else ""
+    #             time_str += f"{mins}m" if mins else ""
+    #             time_str += f"{secs}s" if secs else ""
+    #             await ctx.reply(f"Timer {time_str} started :)")
+    #             await asyncio.sleep(total_seconds)
+    #             await ctx.reply(f"{time_str} timer, just ran out!")
 
-        Args:
-            self: The Twitch chatbot object.
-            ctx: A Twitch command context object.
-            msg: A string message containing the duration for the timer.
-
-        Returns:
-            None
-
-        The function takes a string message containing the duration for the timer in seconds, minutes, or hours
-        (specified with 's', 'm', or 'h' respectively). It then converts the duration to seconds, starts the timer, and
-        sends a notification message when the timer runs out. The notification message includes the original duration of
-        the timer in hours, minutes, and seconds.
-        """
-        time_unit = msg[-1]
-        msg = msg.rstrip("hms")
-        if msg:
-            total_seconds = int(msg)
-            if time_unit == "m":
-                total_seconds *= 60
-            elif time_unit == "h":
-                total_seconds *= 3600
-            if total_seconds > 0:
-                hours, remainder = divmod(total_seconds, 3600)
-                mins, secs = divmod(remainder, 60)
-                time_str = f"{hours}h" if hours else ""
-                time_str += f"{mins}m" if mins else ""
-                time_str += f"{secs}s" if secs else ""
-                await ctx.reply(f"Timer {time_str} started :)")
-                await asyncio.sleep(total_seconds)
-                await ctx.reply(f"{time_str} timer, just ran out!")
+    # @commands.command(name="timer")
+    # async def timer(self, ctx, *, msg=None):
+    #     if msg.lower() == "start":
+    #         await ctx.channel.send("Timer started")
+    #         timer_start = datetime.datetime
+    #     else if msg.lower() == "stop":
+    #         timer_end = time.time()
+    #         await ctx.channel.send("Timer stopped" + str(timer_end - timer_start))
 
     @commands.command(name="lag")
     async def lag(self, msg) -> None:
@@ -243,22 +258,22 @@ class Bot(commands.Bot):
             + "they were last playing"
         )
 
-    @commands.command(name="dance")
-    async def dance(self, msg) -> None:
-        if msg.author.name == "themythh":
-            while True:
-                await sleep(5)
-                await msg.channel.send("SourPls")
+    # @commands.command(name="dance")
+    # async def dance(self, msg) -> None:
+    #     if msg.author.name == "themythh":
+    #         while True:
+    #             await sleep(5)
+    #             await msg.channel.send("SourPls")
 
-    @commands.command(name="brain")
-    async def dance(self, msg) -> None:
-        if msg.author.name == "themythh":
-            while True:
-                await sleep(1)
-                await msg.channel.send(
-                    "/me O-oooooooooo AAAAE-A-A-I-A-U- JO-oooooooooooo AAE-O-A-A-U-U-A- E-eee-ee-eee "
-                    "AAAAE-A-E-I-E-A-JO-ooo-oo-oo-oo EEEEO-A-AAA-AAAA "
-                )
+    # @commands.command(name="brain")
+    # async def dance(self, msg) -> None:
+    #     if msg.author.name == "themythh":
+    #         while True:
+    #             await sleep(1)
+    #             await msg.channel.send(
+    #                 "/me O-oooooooooo AAAAE-A-A-I-A-U- JO-oooooooooooo AAE-O-A-A-U-U-A- E-eee-ee-eee "
+    #                 "AAAAE-A-E-I-E-A-JO-ooo-oo-oo-oo EEEEO-A-AAA-AAAA "
+    #             )
 
     @commands.command(name="coinflip", aliases=["cf"])
     async def coinflip(self, msg) -> None:
@@ -306,7 +321,7 @@ class Bot(commands.Bot):
         """
         channel_name = [msg]
         await bot.join_channels(channel_name)
-        await ctx.channel.send("Joined channel: " + str(channel_name))
+        await ctx.channel.send(f"Joined channel: {channel_name}")
         print(channel_name)
 
     # leave current channel
@@ -328,38 +343,6 @@ class Bot(commands.Bot):
         await ctx.channel.send("Leaving channel, bye!")
         await self.part_channels([ctx.channel.name])
 
-    @commands.command(name="ban")
-    async def ban(self, msg) -> None:
-        for x in range(1, 10000):
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hoss{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hossoo_{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hoss00{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hoss000{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban h0ssoo{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban h0ss__{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hoss__{x}")
-            await sleep(0.3)
-            await msg.channel.send(f"/ban hoss00{x}__")
-            await sleep(0.3)
-
-    @commands.command(name="ban2")
-    async def banTXT(self, ctx) -> None:
-        file = open("ban.txt", "r")
-        # count = 0
-        for line in file:
-            # count += 1
-            # if count > 600:
-            await sleep(2)
-            await ctx.channel.send(f"{line.strip()}")
-        file.close()
-
     # @commands.command()
     # async def change_dict(ctx, *, msg):
     #     global spell
@@ -377,11 +360,6 @@ class Bot(commands.Bot):
     #         spell = SpellChecker(language='ru')
     #
     #     await ctx.channel.send("Dictionary set to "+msg)
-
-    # @commands.command(name="leave")
-    # async def leave(ctx, *, msg):
-    #     channel_name = [msg]
-    #     await bot.
 
     @commands.command()
     async def bttvemotes(self, ctx, *, msg=None) -> None:
@@ -407,12 +385,12 @@ class Bot(commands.Bot):
             msg = ctx.channel.name
         emotesString = ""
         counter = 0
-        response = requests.get("https://decapi.me/bttv/emotes/" + msg)
+        response = requests.get(f"https://decapi.me/bttv/emotes/{msg}")
         fetch = response.text
         fetch = fetch.split(" ")
         for numbers, word in enumerate(fetch):
             if len(emotesString + word) < 500:
-                emotesString += word + " "
+                emotesString += f"{word} "
                 counter += 1
             if (len(emotesString + word) > 500) or (numbers == len(fetch) - 1):
                 await ctx.channel.send(emotesString)
@@ -440,6 +418,7 @@ class Bot(commands.Bot):
         counter = 0
         response = requests.get(f"https://api.7tv.app/v2/users/{msg}/emotes")
         fetch = response.json()
+        print(fetch)
         for numbers, word in enumerate(fetch):
             # print(word['name'])
             if len(emotesString + word["name"]) < 500:
@@ -465,7 +444,7 @@ class Bot(commands.Bot):
             print(msg, ctx.channel.name)
             msg = ctx.channel.name
 
-        response = requests.get("https://api.frankerfacez.com/v1/room/" + msg)
+        response = requests.get(f"https://api.frankerfacez.com/v1/room/{msg}")
         fetch = response.json()
         for account, id in fetch["sets"].items():
             for emoticon in id["emoticons"]:
@@ -479,7 +458,7 @@ class Bot(commands.Bot):
         :return:  None. A string containing the FrankerFaceZ emotes for the specified channel to the chat.
         """
         emoteString = ""
-        response = requests.get("https://api.frankerfacez.com/v1/room/" + msg)
+        response = requests.get(f"https://api.frankerfacez.com/v1/room/{msg}")
         fetch = response.json()
 
         for account, id in fetch["sets"].items():
@@ -580,9 +559,7 @@ class Bot(commands.Bot):
         :return:                   None. The function sends the pyramid to the chat.
         """
         new = msg.split(" ")
-        limit = 5
-        if ctx.author.is_broadcaster:
-            limit = 48
+        limit = 48 if ctx.author.is_broadcaster else 5
         if not str(new[1]).isnumeric():
             await ctx.channel.send(
                 f'Does "{new[1]}" look like a number to you!? Madge '
@@ -596,16 +573,16 @@ class Bot(commands.Bot):
             return
         column = ""
 
-        for rows in range(x):
+        for _ in range(x):
             await asyncio.sleep(1)
-            column += new[0] + " "
+            column += f"{new[0]} "
             if len(column) > 500:
                 await ctx.channel.send("Message is longer than 500 characters")
                 return
             await ctx.channel.send(column)
         column = column.rsplit(" ", 1)[0]
 
-        for row in range(x - 1, 0, -1):
+        for _ in range(x - 1, 0, -1):
             await asyncio.sleep(1)
             column = column.rsplit(" ", 1)[0]
             await ctx.channel.send(column)
@@ -649,7 +626,7 @@ class Bot(commands.Bot):
             facts = ["random/math", "random/trivia"]
             number = randint(0, 1)
             await ctx.channel.send(
-                requests.get("http://numbersapi.com/" + facts[number]).text
+                requests.get(f"http://numbersapi.com/{facts[number]}").text
             )
 
     @commands.command(name="8ball")
@@ -807,12 +784,12 @@ class Bot(commands.Bot):
         # convert sunrise and sunset to city's timezone
         try:
             weather = (
-                    f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):"
-                    + f" {response['weather'][0]['description']} {emoji_icon}, {response['main']['temp']}ºC ({round(response['main']['temp'] * 1.8 + 32, 2)} ºF), feels like "
-                    + f"{response['main']['feels_like']}ºC, Cloud cover: {response['clouds']['all']}%,Wind: {wind_direction} "
-                    + f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%,"
-                    + f" Pressure: {response['main']['pressure']}hPa, Sunrise: {self.unix_to_time(response['sys']['sunrise'], response['timezone'])}, "
-                    + f" Sunset: {self.unix_to_time(response['sys']['sunset'], response['timezone'])}"
+                f"{ctx.author.name}, {response['name']},{response['sys']['country']} (now):"
+                + f" {response['weather'][0]['description']} {emoji_icon}, {response['main']['temp']}ºC ({round(response['main']['temp'] * 1.8 + 32, 2)} ºF), feels like "
+                + f"{response['main']['feels_like']}ºC, Cloud cover: {response['clouds']['all']}%,Wind: {wind_direction} "
+                + f"{response['wind']['speed']}m/s. Humidity: {response['main']['humidity']}%,"
+                + f" Pressure: {response['main']['pressure']}hPa, Sunrise: {self.unix_to_time(response['sys']['sunrise'], response['timezone'])}, "
+                + f" Sunset: {self.unix_to_time(response['sys']['sunset'], response['timezone'])}"
             )
         except Exception as e:
             print(e)
@@ -946,7 +923,7 @@ class Bot(commands.Bot):
         """
         filled = ""
         while len(filled + msg) < 500:
-            filled += msg + " "
+            filled += f"{msg} "
         await ctx.channel.send(filled)
 
     # add trusted users for link moderation
@@ -960,44 +937,14 @@ class Bot(commands.Bot):
         """
         if ctx.author.is_broadcaster or ctx.author.is_mod or ctx.author.is_owner:
             # user_id = requests.get(f"https://api.twitch.tv/helix/users?login={msg}").json()["data"][0]["id"]
-            if await botDB.add_trusted_user(username=msg):
-                if msg not in self.trusted_users:
-                    self.trusted_users.append(msg.lower())
+            if (
+                await botDB.add_trusted_user(username=msg)
+                and msg not in self.trusted_users
+            ):
+                self.trusted_users.append(msg.lower())
             await ctx.channel.send(f"{msg} is now a trusted user!")
         else:
             await ctx.channel.send("You are not allowed to use this command!")
-
-    # get ability from pokepy
-    @commands.command(name="ability", aliases=["a"])
-    async def ability(self, ctx: commands.Context, *, msg) -> None:
-        """
-        This command retrieves the effect of a Pokemon ability using the PokeAPI.
-        :param ctx: commands.Context object representing the invocation context
-        :param msg: string argument representing the ability to retrieve
-        :return: None. The function sends a message to the user's channel with the effect of the ability.
-        """
-        ability = self.pokemonClient.get_ability(msg).effect_entries
-        for key in ability:
-            if key.language.name == "en":
-                await ctx.channel.send(key.short_effect)
-                return
-
-    # get berry from pokepy
-    @commands.command(name="berry", aliases=["b"])
-    async def berry(self, ctx: commands.Context, *, msg) -> None:
-        """
-        Retrieves information about a specified berry in the Pokemon game and returns the short description of its effect.
-        :param ctx:  commands.Context object representing the invocation context
-        :param msg:  string argument representing the berry to retrieve
-        :return:  None. The function sends a message to the user's channel with the short description of the berry's effect.
-        """
-        berry = requests.get(self.pokemonClient.get_berry(msg).item.url).json()[
-            "effect_entries"
-        ]
-        for key in range(0, len(berry)):
-            if berry[key]["language"]["name"] == "en":
-                await ctx.channel.send(berry[key]["short_effect"])
-                return
 
     # def is_trusted_user(self, username) -> bool:
     #     if not self.trusted_users:
@@ -1011,7 +958,7 @@ class Bot(commands.Bot):
         return True
 
     async def event_command_error(
-            self, ctx: commands.Context, error: Exception
+        self, ctx: commands.Context, error: Exception
     ) -> None:
         """
         This function handles errors that occur during command execution, and specifically handles the case where a command is on cooldown. It sends a message to the channel indicating the remaining cooldown time.
@@ -1021,7 +968,7 @@ class Bot(commands.Bot):
         """
         if isinstance(error, commands.CommandOnCooldown):
             time = str(error).split(".", 1)[1].replace("(", "").replace(")", "")
-            await ctx.send("Command is on CD, " + time)
+            await ctx.send(f"Command is on CD, {time}")
 
     # command to get a word definition from dictionaryapi
     @commands.command(name="define", aliases=["d"])
@@ -1096,6 +1043,17 @@ class Bot(commands.Bot):
                 f"{len(users)} trainers tried to catch the pokemon, @{users[chosen].author.name} caught it!"
                 " It will be sent to your pokedex, good job!"
             )
+            if len(users) == 0:
+                await ctx.channel.send("No one tried to catch the pokemon 😪")
+
+    @commands.command(name="start")
+    async def start(self, ctx: commands.Context) -> None:
+        """
+        This function starts the bot's broadcast routine.
+        :param ctx:  commands.Context object representing the invocation context
+        :return:  None. The function sends a message to the user's channel indicating the broadcast has started.
+        """
+        self.broadcast.start(ctx)
 
     # when was a user last seen.
     @commands.command(aliases=["ls"])
@@ -1148,7 +1106,7 @@ class Bot(commands.Bot):
 
     # add command to load a specific cog
     @commands.command(name="lm")
-    async def load_m(self, ctx: commands.Context, extension) -> None:
+    async def load_m(self, ctx: commands.Context, extension: str) -> None:
         """
         Loads a specified extension (a module containing commands). Only trusted users (broadcaster, moderator, owner, or users added by the "permit" command) can use this command.
         :param ctx: commands.Context object representing the invocation context
@@ -1161,7 +1119,7 @@ class Bot(commands.Bot):
 
     # add command to unload specific cog
     @commands.command()
-    async def unload(self, ctx: commands.Context, extension) -> None:
+    async def unload(self, ctx: commands.Context, extension: str) -> None:
         """
         Unloads a given extension from the bot. Only trusted users (broadcaster, moderator, owner, or users added by the "permit" command) can use this command.
         :param ctx: commands.Context object representing the invocation context
@@ -1175,7 +1133,7 @@ class Bot(commands.Bot):
             await ctx.channel.send("You are not authorized to use this command")
 
     @commands.command(name="ai", aliases=["openai"])
-    async def ai(self, ctx: commands.Context, *, msg) -> None:
+    async def ai(self, ctx: commands.Context, *, msg: str) -> None:
         """
         This function is a command for a Twitch chatbot that uses the OpenAI API to generate text based on user input. The function takes in a message as an argument and sends it to the OpenAI API to generate a response. The response is then split into multiple messages and sent back to the user in the Twitch chat.
         :param ctx: the context object of the command invocation
@@ -1190,7 +1148,7 @@ class Bot(commands.Bot):
             return
         try:
             response = requests.post(
-                f"https://api.openai.com/v1/chat/completions",
+                "https://api.openai.com/v1/chat/completions",
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
@@ -1209,7 +1167,7 @@ class Bot(commands.Bot):
                     await ctx.channel.send(answer)
                     answer = f"@{ctx.author.name} "
                 else:
-                    answer += word + " "
+                    answer += f"{word} "
             await ctx.channel.send(answer)
         except asyncio.exceptions.TimeoutError as t:
             print(t)
@@ -1222,11 +1180,12 @@ class Bot(commands.Bot):
     # Function to toggle the state of a command for a specific channel
     @commands.command(name="toggle")
     async def toggle(self, ctx, command_name: str):
-        for name, command in self.bot.commands.items():
+        for name, command in self.commands.items():
             if hasattr(command.callback, "toggle"):
                 await command.callback.toggle(ctx, command_name)
 
     async def toggle_command(self, ctx: commands.Context, command_name: str):
+        print(ctx.channel)
         channel_id = str(ctx.channel)
         if channel_id not in self.command_states:
             self.command_states[channel_id] = {}
@@ -1247,9 +1206,9 @@ class Bot(commands.Bot):
         channel_id = str(ctx.channel.id)
         command_name = ctx.command.name
         if (
-                channel_id in self.command_states
-                and command_name in self.command_states[channel_id]
-                and not self.command_states[channel_id][command_name]
+            channel_id in self.command_states
+            and command_name in self.command_states[channel_id]
+            and not self.command_states[channel_id][command_name]
         ):
             await ctx.send(
                 f"Sorry, the {command_name} command is currently disabled in this channel."
@@ -1268,14 +1227,170 @@ class Bot(commands.Bot):
     async def title(self, ctx: commands.Context, *, title: str):
         await ctx.get_user(ctx.channel.name).modify_stream(title=title)
 
+    @commands.command(name="ai_help", aliases=["openai_help"])
+    async def ai_help(self, ctx, *, msg) -> None:
+        print("ai_help")
+        """
+        This function is a command for a Twitch chatbot that uses the OpenAI API to generate text based on user input. The function takes in a message as an argument and sends it to the OpenAI API to generate a response. The response is then split into multiple messages and sent back to the user in the Twitch chat.
+        :param ctx: the context object of the command invocation (here it's part of message)
+        :param msg: the message that the user inputs as a prompt for the OpenAI API
+        :return: None. It sends messages to the Twitch chat instead
+        """
+        if msg is None:
+            await ctx.channel.send("Please enter a message")
+            return
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                },
+                json={
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are thenerdgebot, a twitch chatbot with various capabilities, do not provide command description, only the name, unless they ask for a specific command. If you are ever asked about what commands you have, just group them by theme, say pokemon, utility etc.., if they ask for pokemon commands for example, then give a list without explanations of what each command does, if they ask for a specific command then you can give an explanation, keep messages short."
+                            + " Here's a list to the commands you have access to: "
+                            + """        ability
+            Fetches a pokemon \'s ability.
+            Usage: !ability
+        ai
+            Sends a message to ChatGPT
+            Usage: !ai \"your prompt\"
+        berry
+            Fetches a berry\'s ability.
+            Usage: !ability \"ability name\"
+        bttvemotes
+            Fetches\'s a channel\'s bttvemotes, if used without a channel name, fetches the emotes for the channel you\'re using the command in.
+            Usage: !bttvemotes
+            !bttvemotes \"channel name\"
+        coinflip
+            Flips a coin.
+            Usage: !coinflip
+            !cf
+        define
+            Returns the definition of a word to chat.
+            !define \"word\"
+        eight_ball
+            Shake a digital 8-ball in chat, trust it with all of your life decisions, let it control your life (please do not)
+            !8ball \"your question\"
+        facts 
+            Gives u a random fact, there was something about history, or math or whatever, who cares just do this
+            Usage: !fact /dl>
+            ffzemotes
+                Works the same way bttvemotes works, either return this channel\'s or the channel passed
+                Usage: !ffzemotes
+                !ffzemotes \"channel name\"
+            fill
+                you say \"a\" bot says \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" (fills till max message length) probably don\'t use it?
+                Usage: !fill \"your message\"
+            first_seen
+                Checks the bot\'s database to see when the user was seen, if ever
+                Usage: !fs \"username\"
+            get_chatter_colour
+                Gets a chatter\'s name\'s colour
+                Usage: !c \"username\"
+                !color \"username\"
+                !colour \"username\"
+            item
+                Gets a pokemon item\'s effect description
+                Usage: !i \"item name\"
+                !item \"item name\"
+            goto
+                Makes the bot try to join a channel, please do not abuse it, if you abuse you i will make the bot ignore you :)
+                Usage: !goto \"channel name\"
+            last_seen
+                The opposite of first seen....
+                Usage: !ls \"channel name\"
+            begone
+                Join.... leave... you get it
+                Usage: !begone
+                !l
+            move
+                Gets a pokemon move\'s description
+                Usage: !move \"pokemon move name\"
+            pokedex
+                Gets a list of the pokemon you\'ve caught through the bot, game incoming COPIUM
+                Usage: !pokedex
+                !pokedex \"username\"
+                !pokedex deviation - shows a percentage list spread of pokemon by first letter
+                !pokedex reset - if you say yes, it\'s gone, ALL OF IT, i cannot restore it
+            pokemon
+                catch a mon, should be gone (soon TM)
+                Usage: !mon
+            pyramid
+                I\'ll let you guess what pyramid does
+                Usage: !pyramid \"word\" \"max-height\"
+            reminder
+            reminders
+                Send a reminder to a chatter next time they chat :) Be nice, say good morning or good night
+                Usage: !reminder \"username\" \"message\"
+            set_location
+                Save location for weather command
+                Usage: !sl \"city name\" if needed you can do City,US (2 letter country code)
+            seventvemotes
+                ewtv emotes
+                Usage: !7tvemotes
+                !7tvemotes \"channel name\"
+            timer
+                The function takes a string message containing the duration for the timer in seconds, minutes, or hours (specified with \'s\', \'m\', or \'h\' respectively).
+                Usage: !timer \"number\" \"s/m/h\"
+            trade
+                Triggers a pokemon trade with another user bot will guide you through messages, auto cancelled if 1 of the participants doesn\'t respond for a while
+                Usage: !t \"username\"
+                !trade \"username\"
+            trigger
+                Pokemon evolution conditions
+                !trigger \"pokemon name\"
+            update_location
+                Change your already set location in the db
+                Usage: !ul \"city name\" or city,us (2 letter country code)
+            weak_type
+                Weakness list for certain pokemon
+                Usage: !weak \"pokemon name or pokemon id\"
+            weather
+                Current weather result for your set location, or provided city name
+                Usage: !weather
+                !weather city or city,us (2 letter country code)
+            ww
+                Weakness list for given type or types of pokemon
+                Usage: !w \"type name\"
+                !w \"type name\" \"type name\"
+    """,
+                        },
+                        {"role": "user", "content": msg},
+                    ],
+                    "max_tokens": 500,
+                },
+            ).json()
+            text = response["choices"][0]["message"]["content"].split(" ")
+            print(response)
+            answer = f"@{ctx.author.name} "
+            for word in text:
+                if len(answer + word + " ") > 500:
+                    await ctx.channel.send(answer)
+                    answer = f"@{ctx.author.name} "
+                else:
+                    answer += f"{word} "
+            await ctx.channel.send(answer)
+        except asyncio.exceptions.TimeoutError as t:
+            print(t)
+            await ctx.channel.send("OpenAI API timed out")
+        except Exception as e:
+            print("error")
+            print(e)
+            await ctx.channel.send("An error has occurred!")
+
 
 # bot.py
 if __name__ == "__main__":
     bot = Bot()
     bot.pool = bot.loop.run_until_complete(
         asyncpg.create_pool(
-            host="8.tcp.ngrok.io",
-            port="11958",
+            host="2.tcp.ngrok.io",
+            port="18106",
             user="postgres",
             password="M1m4897",
             database="postgres",

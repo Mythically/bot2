@@ -21,6 +21,7 @@ pokepy = ">=0.6.1"
 pdoc3 = "*"
 pep257 = "*"
 streamlink = "*"
+aiopokeapi = "*"
 
 [dev-packages]
 

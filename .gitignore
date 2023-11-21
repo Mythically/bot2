@@ -12,3 +12,5 @@ test_bot.py
 testing.py
 validateToken.py
 cogs/read_names_test.py
+app
+/app/

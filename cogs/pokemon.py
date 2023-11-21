@@ -13,6 +13,38 @@ class pokemon_cog(commands.Cog):
     async def event_ready(self):
         print(f"{self.bot.nick} is online!")
 
+        # get ability from pokepy
+    @commands.command(name="ability", aliases=["a"])
+    async def ability(self, ctx: commands.Context, *, msg) -> None:
+        """
+        This command retrieves the effect of a Pokemon ability using the PokeAPI.
+        :param ctx: commands.Context object representing the invocation context
+        :param msg: string argument representing the ability to retrieve
+        :return: None. The function sends a message to the user's channel with the effect of the ability.
+        """
+        ability = self.pokemonClient.get_ability(msg).effect_entries
+        for key in ability:
+            if key.language.name == "en":
+                await ctx.channel.send(key.short_effect)
+                return
+
+    # get berry from pokepy
+    @commands.command(name="berry", aliases=["b"])
+    async def berry(self, ctx: commands.Context, *, msg) -> None:
+        """
+        Retrieves information about a specified berry in the Pokemon game and returns the short description of its effect.
+        :param ctx:  commands.Context object representing the invocation context
+        :param msg:  string argument representing the berry to retrieve
+        :return:  None. The function sends a message to the user's channel with the short description of the berry's effect.
+        """
+        berry = requests.get(self.pokemonClient.get_berry(msg).item.url).json()[
+            "effect_entries"
+        ]
+        for key in range(0, len(berry)):
+            if berry[key]["language"]["name"] == "en":
+                await ctx.channel.send(berry[key]["short_effect"])
+                return
+
     @commands.command(name="type")
     async def types2(self, ctx, *, msg) -> None:
         pokemon = [pokepy.V2Client().get_pokemon(msg.lower())]
@@ -51,7 +83,6 @@ class pokemon_cog(commands.Cog):
         loop = 0
         if pokemon_type:
             for typing in pokemon_type:
-
                 g = 0
                 # print('loop')
                 response = requests.get(f"https://pokeapi.co/api/v2/type/{typing}")
@@ -160,7 +191,6 @@ class pokemon_cog(commands.Cog):
         loop = 0
         if pokemon_type:
             for typing in pokemon_type:
-
                 g = 0
                 # print('loop')
                 response = requests.get(f"https://pokeapi.co/api/v2/type/{typing}")
@@ -361,22 +391,22 @@ class pokemon_cog(commands.Cog):
             " $effect_chance", " " + effect_chance
         )
         if (
-                len(
-                    type.capitalize()
-                    + "; "
-                    + damage_class.capitalize()
-                    + " Power: "
-                    + power
-                    + " Accuracy: "
-                    + accuracy
-                    + " PP: "
-                    + pp
-                    + " Priority: "
-                    + priority
-                    + "  "
-                    + effect_entries
-                )
-                >= 500
+            len(
+                type.capitalize()
+                + "; "
+                + damage_class.capitalize()
+                + " Power: "
+                + power
+                + " Accuracy: "
+                + accuracy
+                + " PP: "
+                + pp
+                + " Priority: "
+                + priority
+                + "  "
+                + effect_entries
+            )
+            >= 500
         ):
             await ctx.channel.send(
                 type.capitalize()

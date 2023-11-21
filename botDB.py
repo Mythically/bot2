@@ -25,6 +25,7 @@ import asyncpg
 
 # create connection to database
 
+
 # class Database(commands.Cog):
 async def connect_to_db():
     conn = await asyncpg.connect(
@@ -74,7 +75,7 @@ async def newUser(username: str, user_id: int) -> bool:
     try:
         conn = await connect_to_db()
         if not await conn.fetchval(
-                "SELECT exists (SELECT 1 FROM users WHERE user_id = $1 limit 1)", user_id
+            "SELECT exists (SELECT 1 FROM users WHERE user_id = $1 limit 1)", user_id
         ):
             await conn.fetch(
                 "INSERT INTO users (username, user_id, messages) VALUES ($1, $2, $3)",
@@ -93,7 +94,7 @@ async def newUser(username: str, user_id: int) -> bool:
 async def get_user(username: str):
     try:
         conn = await connect_to_db()
-        user = await conn.fetch(f'SELECT * FROM users WHERE username=$1', username)
+        user = await conn.fetch(f"SELECT * FROM users WHERE username=$1", username)
         return user
     except Exception as e:
         print(e)
@@ -120,8 +121,8 @@ async def is_location_set(user_id: int) -> bool:
     try:
         conn = await connect_to_db()
         if await conn.fetchval(
-                "SELECT exists (SELECT user_id FROM user_locations WHERE user_id = $1 limit 1)",
-                user_id,
+            "SELECT exists (SELECT user_id FROM user_locations WHERE user_id = $1 limit 1)",
+            user_id,
         ):
             await conn.close()
             return True
@@ -134,7 +135,9 @@ async def is_location_set(user_id: int) -> bool:
 
 
 # set user location in postgresql
-async def set_location(user_id: int, city_name: str, lat: int, lon: int, hidden: bool) -> str:
+async def set_location(
+    user_id: int, city_name: str, lat: int, lon: int, hidden: bool
+) -> str:
     try:
         conn = await connect_to_db()
         await conn.execute(
@@ -155,7 +158,8 @@ async def set_location(user_id: int, city_name: str, lat: int, lon: int, hidden:
 
 # update user's location in postgresql
 async def update_location(
-        user_id: int, city_name: str, lat: int, lon: int, hidden: bool) -> str:
+    user_id: int, city_name: str, lat: int, lon: int, hidden: bool
+) -> str:
     try:
         conn = await connect_to_db()
         await conn.fetch(
@@ -295,8 +299,11 @@ async def delete_trusted_user(username: str) -> bool:
 ################### POKEMON & BATTLES MANAGMENT #####################
 #####################################################################
 
+
 # insert pokemon into postgresql
-async def insertCaughtPokemon(pokemon_id: int, pokemon_name: str, user_id: int, username: str) -> bool:
+async def insertCaughtPokemon(
+    pokemon_id: int, pokemon_name: str, user_id: int, username: str
+) -> bool:
     try:
         conn = await connect_to_db()
         await conn.fetch(
@@ -361,7 +368,9 @@ async def getPokedex(username: str) -> str:
 async def has_caught(user_id: int, mon: str) -> str:
     try:
         conn = await connect_to_db()
-        mon = await conn.fetch(f"SELECT pokemon_name FROM pokemon WHERE user_id={user_id} AND pokemon_name={mon}")
+        mon = await conn.fetch(
+            f"SELECT pokemon_name FROM pokemon WHERE user_id={user_id} AND pokemon_name={mon}"
+        )
         conn.close()
         return mon
     except Exception as e:
@@ -369,8 +378,14 @@ async def has_caught(user_id: int, mon: str) -> str:
 
 
 # exchange pokemon between two users (user_id and user_id2) (pokemon_name and pokemon_name2) (username and username2)
-async def exchange_pokemon(user_id: int, user_id2: int, pokemon_name: str, pokemon_name2: str, username: str,
-                           username2: str) -> bool:
+async def exchange_pokemon(
+    user_id: int,
+    user_id2: int,
+    pokemon_name: str,
+    pokemon_name2: str,
+    username: str,
+    username2: str,
+) -> bool:
     try:
         conn = await connect_to_db()
         await conn.fetch(
@@ -389,6 +404,17 @@ async def exchange_pokemon(user_id: int, user_id2: int, pokemon_name: str, pokem
         )
         await conn.close()
         return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+async def dbtest2():
+    try:
+        conn = await connect_to_db()
+        result = await conn.fetch("SELECT COUNT(*) FROM users;")
+        await conn.close()
+        return result
     except Exception as e:
         print(e)
         return False
