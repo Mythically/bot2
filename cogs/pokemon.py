@@ -1,5 +1,6 @@
 import pokepy
 import requests
+import pokebase as pb
 
 from twitchio.ext import commands
 
@@ -14,19 +15,22 @@ class pokemon_cog(commands.Cog):
         print(f"{self.bot.nick} is online!")
 
         # get ability from pokepy
+
     @commands.command(name="ability", aliases=["a"])
-    async def ability(self, ctx: commands.Context, *, msg) -> None:
+    async def ability(self, ctx: commands.Context, msg) -> None:
         """
         This command retrieves the effect of a Pokemon ability using the PokeAPI.
         :param ctx: commands.Context object representing the invocation context
         :param msg: string argument representing the ability to retrieve
         :return: None. The function sends a message to the user's channel with the effect of the ability.
         """
-        ability = self.pokemonClient.get_ability(msg).effect_entries
-        for key in ability:
-            if key.language.name == "en":
-                await ctx.channel.send(key.short_effect)
-                return
+        ability = pb.ability(f"{msg}")
+        print(ability.effect_entries)
+        # ability = self.pokemonClient.get_ability(msg).effect_entries
+        # for key in ability:
+        #     if key.language.name == "en":
+        #         await ctx.channel.send(key.short_effect)
+        #         return
 
     # get berry from pokepy
     @commands.command(name="berry", aliases=["b"])

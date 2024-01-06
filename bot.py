@@ -4,6 +4,9 @@ import time
 from pprint import pprint
 import asyncpg
 import pokepy
+import twitchio
+import pokebase as pb
+
 import botDB
 import datetime
 import emoji
@@ -13,7 +16,9 @@ import requests
 from datetime import datetime
 from asyncio import sleep
 from random import randint
+from pokebase import cache
 
+cache = cache.API_CACHE
 # from spellchecker import SpellChecker
 # from twitchio import Channel, User, Client
 from twitchio.ext import commands, routines
@@ -44,8 +49,6 @@ class Bot(commands.Bot):
     initial_extensions: list = ["cogs.pokemon", "cogs.pokedex", "cogs.db"]
     reminders: list = []
     command_states = {}
-    timer_start: int = 0
-    timer_stop: int = 0
     """
     Event that is triggered when the bot is ready to start processing events.
     """
@@ -162,6 +165,14 @@ class Bot(commands.Bot):
             ):
                 await msg.channel.send(f"/ban {name}")
 
+    @commands.command(name="newmon")
+    async def newmon(self, ctx: commands.Context, *, msg=None):
+        print(msg)
+        if msg is None:
+            await ctx.channel.send("Please enter a pokemon name")
+        # types = [poke_type.type.name for poke_type in pb.pokemon(msg).types]
+        # print(types)
+
     @commands.command(name="test")
     async def test(self, ctx: commands.Context, *, msg=None) -> None:
         """A test command to check if the bot is functioning properly.
@@ -180,7 +191,7 @@ class Bot(commands.Bot):
         await ctx.channel.send("test passed!")
 
     @commands.command(name="vanish")
-    async def vanish(self, msg) -> None:
+    async def vanish(self, msg: twitchio.Message) -> None:
         """Timeouts the user who sends the command for 1 second.
 
         Args:
@@ -1221,12 +1232,8 @@ class Bot(commands.Bot):
     async def toggle_command(self, ctx: commands.Context, command_name: str):
         await self.toggle_command(ctx, command_name)
 
-    # Execute the command...
-
-    @commands.command(name="title")
-    async def title(self, ctx: commands.Context, *, title: str):
-        await ctx.get_user(ctx.channel.name).modify_stream(title=title)
-
+    # TODO: spawn its own bot to handle support uniquely. will try to figure out a way to monitor ratelimits between
+    # the two
     @commands.command(name="ai_help", aliases=["openai_help"])
     async def ai_help(self, ctx, *, msg) -> None:
         print("ai_help")
@@ -1389,11 +1396,11 @@ if __name__ == "__main__":
     bot = Bot()
     bot.pool = bot.loop.run_until_complete(
         asyncpg.create_pool(
-            host="2.tcp.ngrok.io",
-            port="18106",
-            user="postgres",
-            password="M1m4897",
-            database="postgres",
+            host=os.environ["DB_HOST"],
+            port=os.environ["DB_PORT"],
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
+            database=os.environ["DB_NAME"],
         )
     )
     bot.run()

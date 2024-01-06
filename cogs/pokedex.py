@@ -1,7 +1,6 @@
 import beckett
 import pokepy
 import botDB
-
 from asyncio import sleep
 from random import randint
 from twitchio.ext import commands

@@ -15,7 +15,6 @@ class db_cog(commands.Cog):
     async def db(self, ctx: commands.Context):
         await ctx.send("DB cog")
 
-    @toggle
     @commands.command(name="dbtest")
     async def dbtest(self, ctx: commands.Context):
         print("dbtest")
